@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>INFORME OPERACIONAL CBMERJ</title>
+    <style>
+        :root {
+            --bg-principal: #121212;
+            --bg-card: #1e1e1e;
+            --vermelho-cbmerj: #cc0000;
+            --vermelho-suave: #3a1111;
+            --texto-principal: #ffffff;
+            --texto-secundario: #b3b3b3;
+            --verde-whatsapp: #25d366;
+            --borda: #333333;
+            --destaque: #ffcc00;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-principal);
+            color: var(--texto-principal);
+            padding-bottom: 40px;
+        }
+
+        header {
+            background-color: var(--bg-card);
+            border-bottom: 3px solid var(--vermelho-cbmerj);
+            text-align: center;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-size: 1.3rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }
+
+        header p {
+            font-size: 0.8rem;
+            color: var(--texto-secundario);
+            text-transform: uppercase;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 0 10px;
+        }
+
+        .modulo-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn-modulo {
+            background-color: #2a2a2a;
+            border: 2px solid var(--borda);
+            color: var(--texto-principal);
+            padding: 15px 5px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .btn-modulo.active {
+            border-color: var(--vermelho-cbmerj);
+            background-color: var(--vermelho-suave);
+        }
+
+        .modulo-conteudo {
+            display: none;
+        }
+
+        .modulo-conteudo.active {
+            display: block;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--borda);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--vermelho-cbmerj);
+            padding-bottom: 4px;
+            margin-bottom: 10px;
+            color: var(--vermelho-cbmerj);
+        }
+
+        .sub-secao-titulo {
+            font-size: 0.85rem;
+            color: var(--destaque);
+            text-transform: uppercase;
+            margin: 8px 0 4px 0;
+            font-weight: bold;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            color: var(--texto-secundario);
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .op-card {
+            background-color: #121212;
+            border: 1px solid var(--borda);
+            padding: 12px 6px;
+            text-align: center;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 45px;
+        }
+
+        .op-card.selected-radio {
+            background-color: var(--vermelho-cbmerj);
+            border-color: #fff;
+            color: white;
+        }
+
+        .op-card.selected-check {
+            background-color: #333;
+            border-color: var(--destaque);
+            color: var(--destaque);
+        }
+
+        .sub-grid-container {
+            background-color: #151515;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 3px solid var(--destaque);
+            display: none;
+        }
+
+        .counter-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #1a1a1a;
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            border: 1px solid #2a2a2a;
+        }
+
+        .counter-label {
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .counter-controls {
+            display: flex;
+            align-items: center;
+            background-color: #121212;
+            border: 1px solid var(--borda);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .counter-btn {
+            background-color: #333;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .counter-btn:active {
+            background-color: var(--vermelho-cbmerj);
+        }
+
+        .counter-value {
+            width: 50px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .btn-acao {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn-gerar { background-color: var(--destaque); color: black; }
+        .btn-whats { background-color: var(--verde-whatsapp); color: white; font-size: 1.15rem; }
+        .btn-secundario { background-color: #333; color: white; font-size: 0.9rem; padding: 10px; }
+
+        .output-box {
+            background-color: #000;
+            border: 1px dashed var(--destaque);
+            color: var(--destaque);
+            padding: 12px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>INFORME OPERACIONAL CBMERJ</h1>
+        <p>Relatório Rápido para Sala de Comunicações</p>
+    </header>
+
+    <div class="container">
+        
+        <div class="modulo-selector">
+            <div class="btn-modulo active" onclick="switchModulo('incendio')">INCÊNDIO</div>
+            <div class="btn-modulo" onclick="switchModulo('acidente')">ACIDENTE</div>
+        </div>
+
+        <div id="modulo-incendio" class="modulo-conteudo active">
+            
+            <div class="card">
+                <div class="card-title">1. Tipo e Subtipo de Incêndio</div>
+                <label>Selecione o Tipo:</label>
+                <div class="btn-grid" data-type="radio" data-id="inc_tipo_pai">
+                    <div class="op-card" data-value="INCÊNDIO" onclick="toggleSubtipoIncendio('incendio')">Incêndio</div>
+                    <div class="op-card" data-value="FOGO EM VEÍCULO" onclick="toggleSubtipoIncendio('fogo_veiculo')">Fogo em Veículo</div>
+                </div>
+
+                <div id="sub_inc_incendio" class="sub-grid-container">
+                    <div class="sub-secao-titulo">Subtipo (Múltipla Escolha):</div>
+                    <div class="btn-grid" data-type="checkbox" data-id="inc_sub_incendio">
+                        <div class="op-card" data-value="EM DEPÓSITOS/GALPÕES">Em Depósitos/Galpões</div>
+                        <div class="op-card" data-value="EM EDIFICAÇÕES RESIDENCIAIS">Em Edif. Residenciais</div>
+                        <div class="op-card" data-value="EM ESTABELECIMENTOS COMERCIAIS">Em Establ. Comerciais</div>
+                        <div class="op-card" data-value="EM INDÚSTRIAS">Em Indústrias</div>
+                        <div class="op-card" data-value="EM RESTAURANTE/BAR">Em Restaurante/Bar</div>
+                        <div class="op-card" data-value="EM ÓRGÃOS PÚBLICOS">Em Órgãos Públicos</div>
+                    </div>
+                </div>
+
+                <div id="sub_inc_fogo_veiculo" class="sub-grid-container">
+                    <div class="sub-secao-titulo">Subtipo (Múltipla Escolha):</div>
+                    <div class="counter-row" style="margin-bottom: 12px; background-color: #000;">
+                        <span class="counter-label">Qtd. de Veículos</span>
+                        <div class="counter-controls">
+                            <button class="counter-btn" onclick="step('inc_qtd_veiculos', -1)">-</button>
+                            <div class="counter-value" id="inc_qtd_veiculos">0</div>
+                            <button class="counter-btn" onclick="step('inc_qtd_veiculos', 1)">+</button>
+                        </div>
+                    </div>
+                    <div class="btn-grid" data-type="checkbox" data-id="inc_sub_veiculo">
+                        <div class="op-card" data-value="AUTOMÓVEL">Automóvel</div>
+                        <div class="op-card" data-value="CAMINHÃO">Caminhão</div>
+                        <div class="op-card" data-value="MOTO">Moto</div>
+                        <div class="op-card" data-value="MOTO ELÉTRICA">Moto Elétrica</div>
+                        <div class="op-card" data-value="TREM">Trem</div>
+                        <div class="op-card" data-value="VAN">Van</div>
+                        <div class="op-card" data-value="ÔNIBUS">Ônibus</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">2. Situação Encontrada</div>
+                <div class="btn-grid" data-type="checkbox" data-id="inc_situacao_encontrada">
+                    <div class="op-card" data-value="Princípio de Incêndio">Princípio de Incêndio</div>
+                    <div class="op-card" data-value="Propagando">Propagando</div>
+                    <div class="op-card" data-value="Generalizado">Generalizado</div>
+                    <div class="op-card" data-value="Controlado">Controlado</div>
+                    <div class="op-card" data-value="Extinto">Extinto</div>
+                    <div class="op-card" data-value="Rescaldo">Rescaldo</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">3. Danos</div>
+                <div class="btn-grid" data-type="checkbox" data-id="inc_danos">
+                    <div class="op-card" data-value="Parcial">Parcial</div>
+                    <div class="op-card" data-value="Total">Total</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">4. Tipo de Material Queimando</div>
+                <div class="btn-grid" data-type="checkbox" data-id="inc_material">
+                    <div class="op-card" data-value="Comum">Comum</div>
+                    <div class="op-card" data-value="Inflamável">Inflamável</div>
+                    <div class="op-card" data-value="Químico">Químico</div>
+                    <div class="op-card" data-value="Explosivo">Explosivo</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">5. Controle de Vítimas</div>
+                <div class="counter-row"><span class="counter-label" style="color:#25d366">Verdes</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_verde',-1)">-</button><div class="counter-value" id="inc_v_verde">0</div><button class="counter-btn" onclick="step('inc_v_verde',1)">+</button></div></div>
+                <div class="counter-row"><span class="counter-label" style="color:var(--destaque)">Amarelas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_amarela',-1)">-</button><div class="counter-value" id="inc_v_amarela">0</div><button class="counter-btn" onclick="step('inc_v_amarela',1)">+</button></div></div>
+                <div class="counter-row"><span class="counter-label" style="color:red">Vermelhas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_vermelha',-1)">-</button><div class="counter-value" id="inc_v_vermelha">0</div><button class="counter-btn" onclick="step('inc_v_vermelha',1)">+</button></div></div>
+                <div class="counter-row"><span class="counter-label" style="color:#888">Cinzas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_cinza',-1)">-</button><div class="counter-value" id="inc_v_cinza">0</div><button class="counter-btn" onclick="step('inc_v_cinza',1)">+</button></div></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">6. Situação das Vítimas</div>
+                <div class="btn-grid" data-type="checkbox" data-id="inc_situacao_vit">
+                    <div class="op-card" data-value="Atendimento iniciado (ASE)">Atend. iniciado (ASE)</div>
+                    <div class="op-card" data-value="Atendimento iniciado (SAMU)">Atend. iniciado (SAMU)</div>
+                    <div class="op-card" data-value="Removida para o hospital (ASE)">Removida p/ Hosp. (ASE)</div>
+                    <div class="op-card" data-value="Removida para o hospital (SAMU)">Removida p/ Hosp. (SAMU)</div>
+                    <div class="op-card" data-value="Removida por populares">Removida por Populares</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">7. Recursos</div>
+                <div class="counter-row"><span class="counter-label">Viaturas Empregadas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_r_vtr',-1)">-</button><div class="counter-value" id="inc_r_vtr">0</div><button class="counter-btn" onclick="step('inc_r_vtr',1)">+</button></div></div>
+                <label style="padding-left: 10px;">Tipos de Vtr:</label>
+                <div class="btn-grid" data-type="checkbox" data-id="inc_tipo_vtr" style="padding: 0 10px;">
+                    <div class="op-card" data-value="ABSL">ABSL</div>
+                    <div class="op-card" data-value="ABS">ABS</div>
+                    <div class="op-card" data-value="ASE">ASE</div>
+                </div>
+                <div class="counter-row" style="margin-top: 10px;"><span class="counter-label">Efetivo Empregado</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_r_efe',-1)">-</button><div class="counter-value" id="inc_r_efe">0</div><button class="counter-btn" onclick="step('inc_r_efe',1)">+</button></div></div>
+            </div>
+        </div>
+
+        <div id="modulo-acidente" class="modulo-conteudo">
+            
+            <div class="card">
+                <div class="card-title">1. Tipo e Subtipo de Acidente</div>
+                <div class="counter-row" style="margin-bottom: 12px;">
+                    <span class="counter-label">Quantidade de Veículos</span>
+                    <div class="counter-controls">
+                        <button class="counter-btn" onclick="step('aci_qtd_veiculos', -1)">-</button>
+                        <div class="counter-value" id="aci_qtd_veiculos">0</div>
+                        <button class="counter-btn" onclick="step('aci_qtd_veiculos', 1)">+</button>
+                    </div>
+                </div>
+
+                <label>Selecione a Tipificação:</label>
+                <div class="btn-grid" data-type="radio" data-id="aci_tipo_pai">
+                    <div class="op-card" data-value="COLISÃO DE VEÍCULOS" onclick="toggleSubtipoAcidente('colisao')">Colisão de Veículos</div>
+                    <div class="op-card" data-value="CAPOTAGEM DE VEÍCULO" onclick="toggleSubtipoAcidente('capotagem')">Capotagem de Veículo</div>
+                </div>
+
+                <div id="sub_aci_colisao" class="sub-grid-container">
+                    <div class="sub-secao-titulo">Subtipo (Múltipla Escolha):</div>
+                    <div class="btn-grid" data-type="checkbox" data-id="aci_sub_colisao">
+                        <div class="op-card" data-value="AUTO">AUTO</div>
+                        <div class="op-card" data-value="BICICLETA">BICICLETA</div>
+                        <div class="op-card" data-value="CAMINHÃO">CAMINHÃO</div>
+                        <div class="op-card" data-value="CARROÇA">CARROÇA</div>
+                        <div class="op-card" data-value="MOTO">MOTO</div>
+                        <div class="op-card" data-value="MOTO ELÉTRICA">MOTO ELÉTRICA</div>
+                        <div class="op-card" data-value="MURO">MURO</div>
+                        <div class="op-card" data-value="POSTE">POSTE</div>
+                        <div class="op-card" data-value="TREM">TREM</div>
+                        <div class="op-card" data-value="VAN">VAN</div>
+                        <div class="op-card" data-value="ÔNIBUS">ÔNIBUS</div>
+                    </div>
+                </div>
+
+                <div id="sub_aci_capotagem" class="sub-grid-container">
+                    <div class="sub-secao-titulo">Subtipo (Múltipla Escolha):</div>
+                    <div class="btn-grid" data-type="checkbox" data-id="aci_sub_capotagem">
+                        <div class="op-card" data-value="AUTO">AUTO</div>
+                        <div class="op-card" data-value="CAMINHÃO">CAMINHÃO</div>
+                        <div class="op-card" data-value="VAN">VAN</div>
+                        <div class="op-card" data-value="ÔNIBUS">ÔNIBUS</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">2. Situação Encontrada</div>
+                <div class="btn-grid" data-type="checkbox" data-id="aci_situacao_encontrada">
+                    <div class="op-card" data-value="Vítima presa as ferragens">Vítima presa às ferragens</div>
+                    <div class="op-card" data-value="Vítima ejetada">Vítima ejetada</div>
+                    <div class="op-card" data-value="Múltiplas vítimas">Múltiplas vítimas</div>
+                    <div class="op-card" data-value="Veículo com GNV">Veículo com GNV</div>
+                    <div class="op-card" data-value="Veículo Híbrido">Veículo Híbrido</div>
+                    <div class="op-card" data-value="Veículo Totalmente Elétrico">Veículo 100% Elétrico</div>
+                    <div class="op-card" data-value="Carga Perigosa">Carga Perigosa</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">3. Danos</div>
+                <div class="btn-grid" data-type="checkbox" data-id="aci_danos">
+                    <div class="op-card" data-value="Parcial">Parcial</div>
+                    <div class="op-card" data-value="Total">Total</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">4. Existe Bloqueio da Via</div>
+                <div class="btn-grid" data-type="checkbox" data-id="aci_bloqueio">
+                    <div class="op-card" data-value="Parcial">Parcial</div>
+                    <div class="op-card" data-value="Total">Total</div>
+                    <div class="op-card" data-value="Vazamento de carga">Vazamento de carga</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">5. Tipo de Material Transportado</div>
+                <div class="btn-grid" data-type="checkbox" data-id="aci_material">
+                    <div class="op-card" data-value="Comum">Comum</div>
+                    <div class="op-card" data-value="Inflamável">Inflamável</div>
+                    <div class="op-card" data-value="Químico">Químico</div>
+                    <div class="op-card" data-value="Explosivo">Explosivo</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">6. Controle de Vítimas</div>
+                <div class="counter-row"><span class="counter-label" style="color:#25d366">Verdes</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_verde',-1)">-</button><div class="counter-value" id="aci_v_verde">0</div><button class="counter-btn" onclick="step('aci_v_verde',1)">+</button></div></div>
+                <div class="counter-row"><span class="counter-label" style="color:var(--destaque)">Amarelas</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_amarela',-1)">-</button><div class="counter-value" id="aci_v_amarela">0</div><button class="counter-btn" onclick="step('aci_v_amarela',1)">+</button></div></div>
+                <div class="counter-row"><span class="counter-label" style="color:red">Vermelhas</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_vermelha',-1)">-</button><div class="counter-value" id="aci_v_vermelha">0</div><button class="counter-btn" onclick="step('aci_v_vermelha',1)">+</button></div></div>
+                <div class="counter-row"><span class="counter-label" style="color:#888">Cinzas</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_cinza',-1)">-</button><div class="counter-value" id="aci_v_cinza">0</div><button class="counter-btn" onclick="step('aci_v_cinza',1)">+</button></div></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">7. Situação das Vítimas</div>
+                <div class="btn-grid" data-type="checkbox" data-id="aci_situacao_vit">
+                    <div class="op-card" data-value="Atendimento iniciado (ASE)">Atend. iniciado (ASE)</div>
+                    <div class="op-card" data-value="Atendimento iniciado (SAMU)">Atend. iniciado (SAMU)</div>
+                    <div class="op-card" data-value="Removida para o hospital (ASE)">Removida p/ Hosp. (ASE)</div>
+                    <div class="op-card" data-value="Removida para o hospital (SAMU)">Removida p/ Hosp. (SAMU)</div>
+                    <div class="op-card" data-value="Removida por populares">Removida por Populares</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">8. Recursos</div>
+                <div class="counter-row"><span class="counter-label">Viaturas Empregadas</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_r_vtr',-1)">-</button><div class="counter-value" id="aci_r_vtr">0</div><button class="counter-btn" onclick="step('aci_r_vtr',1)">+</button></div></div>
+                <label style="padding-left: 10px;">Tipos de Vtr:</label>
+                <div class="btn-grid" data-type="checkbox" data-id="aci_tipo_vtr" style="padding: 0 10px;">
+                    <div class="op-card" data-value="ABSL">ABSL</div>
+                    <div class="op-card" data-value="ABS">ABS</div>
+                    <div class="op-card" data-value="ASE">ASE</div>
+                </div>
+                <div class="counter-row" style="margin-top: 10px;"><span class="counter-label">Efetivo Empregado</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_r_efe',-1)">-</button><div class="counter-value" id="aci_r_efe">0</div><button class="counter-btn" onclick="step('aci_r_efe',1)">+</button></div></div>
+            </div>
+
+        </div>
+
+        <div style="margin-top: 15px;">
+            <button class="btn-acao btn-gerar" onclick="gerarRelatorioTexto()">GERAR INFORME OPERACIONAL</button>
+            <div id="output_box" class="output-box"></div>
+            
+            <button class="btn-acao btn-whats" onclick="enviarWhatsApp()">ENVIAR PELO WHATSAPP</button>
+            <button class="btn-acao btn-secundario" onclick="copiarTexto()">COPIAR TEXTO</button>
+            <button class="btn-acao btn-secundario" style="background-color:#a00" onclick="limparFormulario()">ZERAR FORMULÁRIO</button>
+        </div>
+
+    </div>
+
+    <script>
+        let moduloAtual = 'incendio';
+
+        window.onload = function() {
+            configurarEventosGrid();
+        };
+
+        function switchModulo(modulo) {
+            moduloAtual = modulo;
+            document.querySelectorAll('.btn-modulo').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.modulo-conteudo').forEach(m => m.classList.remove('active'));
+            
+            if(modulo === 'incendio') {
+                document.querySelectorAll('.btn-modulo')[0].classList.add('active');
+                document.getElementById('modulo-incendio').classList.add('active');
+            } else {
+                document.querySelectorAll('.btn-modulo')[1].classList.add('active');
+                document.getElementById('modulo-acidente').classList.add('active');
+            }
+        }
+
+        function toggleSubtipoIncendio(tipo) {
+            document.getElementById('sub_inc_incendio').style.display = 'none';
+            document.getElementById('sub_inc_fogo_veiculo').style.display = 'none';
+            
+            if (tipo === 'incendio') {
+                document.getElementById('sub_inc_incendio').style.display = 'block';
+                limparSelecoesGrid('inc_sub_veiculo');
+                document.getElementById('inc_qtd_veiculos').innerText = '0';
+            } else if (tipo === 'fogo_veiculo') {
+                document.getElementById('sub_inc_fogo_veiculo').style.display = 'block';
+                limparSelecoesGrid('inc_sub_incendio');
+            }
+        }
+
+        function toggleSubtipoAcidente(bloco) {
+            document.getElementById('sub_aci_colisao').style.display = 'none';
+            document.getElementById('sub_aci_capotagem').style.display = 'none';
+            
+            if (bloco === 'colisao') {
+                document.getElementById('sub_aci_colisao').style.display = 'block';
+                limparSelecoesGrid('aci_sub_capotagem');
+            } else if (bloco === 'capotagem') {
+                document.getElementById('sub_aci_capotagem').style.display = 'block';
+                limparSelecoesGrid('aci_sub_colisao');
+            }
+        }
+
+        function configurarEventosGrid() {
+            document.querySelectorAll('.btn-grid').forEach(grid => {
+                const tipo = grid.getAttribute('data-type');
+                grid.querySelectorAll('.op-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        if (tipo === 'radio') {
+                            grid.querySelectorAll('.op-card').forEach(c => c.classList.remove('selected-radio'));
+                            card.classList.add('selected-radio');
+                        } else if (tipo === 'checkbox') {
+                            card.classList.toggle('selected-check');
+                        }
+                    });
+                });
+            });
+        }
+
+        function limparSelecoesGrid(dataId) {
+            const grid = document.querySelector(`.btn-grid[data-id="${dataId}"]`);
+            if (grid) {
+                grid.querySelectorAll('.op-card').forEach(c => {
+                    c.classList.remove('selected-radio');
+                    c.classList.remove('selected-check');
+                });
+            }
+        }
+
+        function getRadioGridValue(dataId) {
+            const grid = document.querySelector(`.btn-grid[data-id="${dataId}"]`);
+            if (!grid) return '';
+            const selected = grid.querySelector('.op-card.selected-radio');
+            return selected ? selected.getAttribute('data-value') : '';
+        }
+
+        function getCheckGridValues(dataId) {
+            const grid = document.querySelector(`.btn-grid[data-id="${dataId}"]`);
+            if (!grid) return [];
+            const values = [];
+            grid.querySelectorAll('.op-card.selected-check').forEach(c => {
+                values.push(c.getAttribute('data-value'));
+            });
+            return values;
+        }
+
+        function step(id, val) {
+            const el = document.getElementById(id);
+            let curr = parseInt(el.innerText) || 0;
+            curr = curr + val;
+            if(curr < 0) curr = 0;
+            el.innerText = curr;
+        }
+
+        function compilarRelatorioTexto() {
+            const agora = new Date();
+            const dataStr = agora.toLocaleDateString('pt-BR');
+            const horaStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+            let texto = `*INFORME OPERACIONAL*\n`;
+            texto += `*DATA:* ${dataStr}\n`;
+            texto += `*HORA:* ${horaStr}\n`;
+            texto += `--------------------------------\n`;
+            
+            if (moduloAtual === 'incendio') {
+                const tipoPai = getRadioGridValue('inc_tipo_pai');
+                let subtiposList = [];
+                let qtdVeiculos = 0;
+                
+                if (tipoPai === 'INCÊNDIO') subtiposList = getCheckGridValues('inc_sub_incendio');
+                if (tipoPai === 'FOGO EM VEÍCULO') {
+                    subtiposList = getCheckGridValues('inc_sub_veiculo');
+                    qtdVeiculos = parseInt(document.getElementById('inc_qtd_veiculos').innerText) || 0;
+                }
+                
+                const situacaoEnc = getCheckGridValues('inc_situacao_encontrada');
+                const danos = getCheckGridValues('inc_danos');
+                const materiais = getCheckGridValues('inc_material');
+                
+                const vVerde = parseInt(document.getElementById('inc_v_verde').innerText) || 0;
+                const vAmarela = parseInt(document.getElementById('inc_v_amarela').innerText) || 0;
+                const vVermelha = parseInt(document.getElementById('inc_v_vermelha').innerText) || 0;
+                const vCinza = parseInt(document.getElementById('inc_v_cinza').innerText) || 0;
+
+                const situacaoVit = getCheckGridValues('inc_situacao_vit');
+                
+                const rVtr = parseInt(document.getElementById('inc_r_vtr').innerText) || 0;
+                const tVtrs = getCheckGridValues('inc_tipo_vtr');
+                const rEfe = parseInt(document.getElementById('inc_r_efe').innerText) || 0;
+
+                //texto += `MISSÃO: INCÊNDIO\n`;
+                if (tipoPai) {
+                    texto += `TIPO: ${tipoPai}\n`;
+                    if(qtdVeiculos > 0) texto += `QUANTIDADE DE VEÍCULOS: ${qtdVeiculos}\n`;
+                    if(subtiposList.length > 0) texto += `SUBTIPO: ${subtiposList.join(', ')}\n`;
+                }
+
+                if (situacaoEnc.length > 0) texto += `SITUAÇÃO ENCONTRADA: ${situacaoEnc.join(', ')}\n`;
+                if (danos.length > 0) texto += `DANOS: ${danos.join(', ')}\n`;
+                if (materiais.length > 0) texto += `MATERIAL QUEIMANDO: ${materiais.join(', ')}\n`;
+
+                let vitTexto = '';
+                if (vVerde > 0) vitTexto += `Verdes: ${vVerde} | `;
+                if (vAmarela > 0) vitTexto += `Amarelas: ${vAmarela} | `;
+                if (vVermelha > 0) vitTexto += `Vermelhas: ${vVermelha} | `;
+                if (vCinza > 0) vitTexto += `Cinzas: ${vCinza} | `;
+                if (vitTexto !== '') {
+                    if (vitTexto.endsWith(' | ')) vitTexto = vitTexto.slice(0, -3);
+                    texto += `VÍTIMAS: ${vitTexto}\n`;
+                }
+
+                if (situacaoVit.length > 0) texto += `SITUAÇÃO DAS VÍTIMAS: ${situacaoVit.join(', ')}\n`;
+
+                let recTexto = '';
+                if (rVtr > 0) {
+                    recTexto += `Vtrs: ${rVtr}`;
+                    if (tVtrs.length > 0) recTexto += ` (${tVtrs.join(', ')})`;
+                    recTexto += ` | `;
+                }
+                if (rEfe > 0) recTexto += `Efetivo: ${rEfe} | `;
+                if (recTexto !== '') {
+                    if (recTexto.endsWith(' | ')) recTexto = recTexto.slice(0, -3);
+                    texto += `RECURSOS: ${recTexto}\n`;
+                }
+
+            } else {
+                const qtdVeiculos = parseInt(document.getElementById('aci_qtd_veiculos').innerText) || 0;
+                const tipoPai = getRadioGridValue('aci_tipo_pai');
+                
+                let subtiposList = [];
+                if (tipoPai === 'COLISÃO DE VEÍCULOS') subtiposList = getCheckGridValues('aci_sub_colisao');
+                if (tipoPai === 'CAPOTAGEM DE VEÍCULO') subtiposList = getCheckGridValues('aci_sub_capotagem');
+
+                const situacaoEnc = getCheckGridValues('aci_situacao_encontrada');
+                const danos = getCheckGridValues('aci_danos');
+                const bloqueio = getCheckGridValues('aci_bloqueio');
+                const materiais = getCheckGridValues('aci_material');
+
+                const vVerde = parseInt(document.getElementById('aci_v_verde').innerText) || 0;
+                const vAmarela = parseInt(document.getElementById('aci_v_amarela').innerText) || 0;
+                const vVermelha = parseInt(document.getElementById('aci_v_vermelha').innerText) || 0;
+                const vCinza = parseInt(document.getElementById('aci_v_cinza').innerText) || 0;
+
+                const situacaoVit = getCheckGridValues('aci_situacao_vit');
+                
+                const rVtr = parseInt(document.getElementById('aci_r_vtr').innerText) || 0;
+                const tVtrs = getCheckGridValues('aci_tipo_vtr');
+                const rEfe = parseInt(document.getElementById('aci_r_efe').innerText) || 0;
+
+                //texto += `MISSÃO: ACIDENTE COM VEÍCULO\n`;
+                                
+                if (tipoPai) {
+                    texto += `TIPO: ${tipoPai}\n`;
+                    if (qtdVeiculos > 0) texto += `VEÍCULOS ENVOLVIDOS: ${qtdVeiculos} (${subtiposList.join(' x ')})\n`;
+		    //if (subtiposList.length > 0) texto += `SUBTIPO: ${subtiposList.join(', ')}\n`;
+                }
+                
+                if (situacaoEnc.length > 0) texto += `SITUAÇÃO ENCONTRADA: ${situacaoEnc.join(', ')}\n`;
+                if (danos.length > 0) texto += `DANOS: ${danos.join(', ')}\n`;
+                if (bloqueio.length > 0) texto += `BLOQUEIO DA VIA: ${bloqueio.join(', ')}\n`;
+                if (materiais.length > 0) texto += `MATERIAL TRANSPORTADO: ${materiais.join(', ')}\n`;
+
+                let vitTexto = '';
+                if (vVerde > 0) vitTexto += `Verdes: ${vVerde} | `;
+                if (vAmarela > 0) vitTexto += `Amarelas: ${vAmarela} | `;
+                if (vVermelha > 0) vitTexto += `Vermelhas: ${vVermelha} | `;
+                if (vCinza > 0) vitTexto += `Cinzas: ${vCinza} | `;
+                if (vitTexto !== '') {
+                    if (vitTexto.endsWith(' | ')) vitTexto = vitTexto.slice(0, -3);
+                    texto += `VÍTIMAS: ${vitTexto}\n`;
+                }
+
+                if (situacaoVit.length > 0) texto += `SITUAÇÃO DAS VÍTIMAS: ${situacaoVit.join(', ')}\n`;
+
+                let recTexto = '';
+                if (rVtr > 0) {
+                    recTexto += `Vtrs: ${rVtr}`;
+                    if (tVtrs.length > 0) recTexto += ` (${tVtrs.join(', ')})`;
+                    recTexto += ` | `;
+                }
+                if (rEfe > 0) recTexto += `Efetivo: ${rEfe} | `;
+                if (recTexto !== '') {
+                    if (recTexto.endsWith(' | ')) recTexto = recTexto.slice(0, -3);
+                    texto += `RECURSOS: ${recTexto}\n`;
+                }
+            }
+            
+            if (texto.endsWith('\n')) {
+                texto = texto.slice(0, -1);
+            }
+            return texto;
+        }
+
+        function gerarRelatorioTexto() {
+            const texto = compilarRelatorioTexto();
+            const box = document.getElementById('output_box');
+            box.innerText = texto;
+            box.style.display = 'block';
+            box.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function enviarWhatsApp() {
+            const texto = compilarRelatorioTexto();
+            const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+            window.open(url, '_blank');
+        }
+
+        function copiarTexto() {
+            const texto = compilarRelatorioTexto();
+            const textArea = document.createElement("textarea");
+            textArea.value = texto;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
+            
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            textArea.setSelectionRange(0, 99999);
+
+            try {
+                const bemSucedido = document.execCommand('copy');
+                if(bemSucedido) {
+                    alert("Copiado com sucesso!");
+                } else {
+                    alert("Erro ao copiar. Selecione o texto abaixo e copie manualmente.");
+                }
+            } catch (err) {
+                alert("Não suportado no dispositivo. Copie pelo quadro de relatório.");
+            }
+
+            document.body.removeChild(textArea);
+        }
+
+        function limparFormulario() {
+            if(confirm("Deseja zerar todos os campos informados?")) {
+                window.location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
