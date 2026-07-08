@@ -468,15 +468,19 @@
 
             <div class="card">
                 <div class="card-title">6. Situação das Vítimas</div>
+                <label>Estado/Ação:</label>
                 <div class="btn-grid" data-type="checkbox" data-id="inc_situacao_vit">
-                    <div class="op-card" data-value="Em atendimento (ASE)">Em atendimento (ASE)</div>
-                    <div class="op-card" data-value="Em atendimento (SAMU)">Em atendimento (SAMU)</div>
-                    <div class="op-card" data-value="Em atendimento (CONCESSIONÁRIA)">Em atendimento (CONCESSIONÁRIA)</div>
-                    <div class="op-card" data-value="Recusou atendimento">Recusou Atendimento</div>
-                    <div class="op-card" data-value="Removida para o hospital (ASE)">Removida p/ Hosp. (ASE)</div>
-                    <div class="op-card" data-value="Removida para o hospital (SAMU)">Removida p/ Hosp. (SAMU)</div>
-                    <div class="op-card" data-value="Removida para o hospital (CONCESSIONÁRIA)">Removida p/ Hosp. (CONCESSIONÁRIA)</div>
-                    <div class="op-card" data-value="Removida por populares">Removida por Populares</div>
+                    <div class="op-card" data-value="Em atendimento">Em atendimento</div>
+                    <div class="op-card" data-value="Removida para o hospital">Removida para o hospital</div>
+                    <div class="op-card" data-value="Removida por populares">Removida por populares</div>
+                    <div class="op-card" data-value="Recusou atendimento">Recusou atendimento</div>
+                </div>
+                <label style="margin-top: 8px;">Órgão / Agência Responsável:</label>
+                <div class="btn-grid" data-type="checkbox" data-id="inc_agencia_vit">
+                    <div class="op-card" data-value="ASE">ASE</div>
+                    <div class="op-card" data-value="SAMU">SAMU</div>
+                    <div class="op-card" data-value="CONCESSIONÁRIA">CONCESSIONÁRIA</div>
+                    <div class="op-card" data-value="OUTROS">OUTROS</div>
                 </div>
             </div>
 
@@ -599,30 +603,34 @@
             </div>
 
             <div class="card">
-                <div class="card-title">5. Controle de Vítimas</div>
-                <div class="btn-grid" data-type="checkbox" data-id="inc_sem_vitimas">
-                    <div class="op-card" data-value="SEM VÍTIMAS" onclick="toggleSemVitimas('inc')">Sem Vítimas</div>
+                <div class="card-title">6. Controle de Vítimas</div>
+                <div class="btn-grid" data-type="checkbox" data-id="aci_sem_vitimas">
+                    <div class="op-card" data-value="SEM VÍTIMAS" onclick="toggleSemVitimas('aci')">Sem Vítimas</div>
                 </div>
-                <div id="inc_bloco_vtr_contadores">
-                    <div class="counter-row"><span class="counter-label" style="color:#fff">Quantidade de Vítimas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_qtd_vitimas',-1)">-</button><div class="counter-value" id="inc_qtd_vitimas">00</div><button class="counter-btn" onclick="step('inc_qtd_vitimas',1)">+</button></div></div>
-                    <div class="counter-row"><span class="counter-label" style="color:#25d366">Verdes</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_verde',-1)">-</button><div class="counter-value" id="inc_v_verde">00</div><button class="counter-btn" onclick="step('inc_v_verde',1)">+</button></div></div>
-                    <div class="counter-row"><span class="counter-label" style="color:var(--destaque)">Amarelas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_amarela',-1)">-</button><div class="counter-value" id="inc_v_amarela">00</div><button class="counter-btn" onclick="step('inc_v_amarela',1)">+</button></div></div>
-                    <div class="counter-row"><span class="counter-label" style="color:red">Vermelhas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_vermelha',-1)">-</button><div class="counter-value" id="inc_v_vermelha">00</div><button class="counter-btn" onclick="step('inc_v_vermelha',1)">+</button></div></div>
-                    <div class="counter-row"><span class="counter-label" style="color:#888">Cinzas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_cinza',-1)">-</button><div class="counter-value" id="inc_v_cinza">00</div><button class="counter-btn" onclick="step('inc_v_cinza',1)">+</button></div></div>
+                <div id="aci_bloco_vtr_contadores">
+                    <div class="counter-row"><span class="counter-label" style="color:#fff">Quantidade de Vítimas</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_qtd_vitimas',-1)">-</button><div class="counter-value" id="aci_qtd_vitimas">00</div><button class="counter-btn" onclick="step('aci_qtd_vitimas',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:#25d366">Verdes</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_verde',-1)">-</button><div class="counter-value" id="aci_v_verde">00</div><button class="counter-btn" onclick="step('aci_v_verde',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:var(--destaque)">Amarelas</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_amarela',-1)">-</button><div class="counter-value" id="aci_v_amarela">00</div><button class="counter-btn" onclick="step('aci_v_amarela',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:red">Vermelhas</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_vermelha',-1)">-</button><div class="counter-value" id="aci_v_vermelha">00</div><button class="counter-btn" onclick="step('aci_v_vermelha',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:#888">Cinzas</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_cinza',-1)">-</button><div class="counter-value" id="aci_v_cinza">00</div><button class="counter-btn" onclick="step('aci_v_cinza',1)">+</button></div></div>
                 </div>
             </div>
 
             <div class="card">
                 <div class="card-title">7. Situação das Vítimas</div>
+                <label>Estado/Ação:</label>
                 <div class="btn-grid" data-type="checkbox" data-id="aci_situacao_vit">
-                    <div class="op-card" data-value="Em atendimento (ASE)">Em atendimento (ASE)</div>
-                    <div class="op-card" data-value="Em atendimento (SAMU)">Em atendimento (SAMU)</div>
-                    <div class="op-card" data-value="Em atendimento (CONCESSIONÁRIA)">Em atendimento (CONCESSIONÁRIA)</div>
-                    <div class="op-card" data-value="Recusou atendimento">Recusou Atendimento</div>
-                    <div class="op-card" data-value="Removida para o hospital (ASE)">Removida p/ Hosp. (ASE)</div>
-                    <div class="op-card" data-value="Removida para o hospital (SAMU)">Removida p/ Hosp. (SAMU)</div>
-                    <div class="op-card" data-value="Removida para o hospital (CONCESSIONÁRIA)">Removida p/ Hosp. (CONCESSIONÁRIA)</div>
-                    <div class="op-card" data-value="Removida por populares">Removida por Populares</div>
+                    <div class="op-card" data-value="Em atendimento">Em atendimento</div>
+                    <div class="op-card" data-value="Removida para o hospital">Removida para o hospital</div>
+                    <div class="op-card" data-value="Removida por populares">Removida por populares</div>
+                    <div class="op-card" data-value="Recusou atendimento">Recusou atendimento</div>
+                </div>
+                <label style="margin-top: 8px;">Órgão / Agência Responsável:</label>
+                <div class="btn-grid" data-type="checkbox" data-id="aci_agencia_vit">
+                    <div class="op-card" data-value="ASE">ASE</div>
+                    <div class="op-card" data-value="SAMU">SAMU</div>
+                    <div class="op-card" data-value="CONCESSIONÁRIA">CONCESSIONÁRIA</div>
+                    <div class="op-card" data-value="OUTROS">OUTROS</div>
                 </div>
             </div>
 
@@ -816,7 +824,6 @@
             curr = curr + val;
             if(curr < 0) curr = 0;
             
-            // Garante a formatação visual com dois dígitos (ex: 02 em vez de 2)
             el.innerText = curr < 10 ? '0' + curr : curr;
         }
 
@@ -883,6 +890,7 @@
                 const vCinza = parseInt(document.getElementById('inc_v_cinza').innerText) || 0;
 
                 const situacaoVit = getCheckGridValues('inc_situacao_vit');
+                const agenciaVit = getCheckGridValues('inc_agencia_vit');
                 
                 const rVtr = parseInt(document.getElementById('inc_r_vtr').innerText) || 0;
                 const tVtrs = getCheckGridValues('inc_tipo_vtr');
@@ -923,7 +931,11 @@
                     }
                 }
 
-                if (situacaoVit.length > 0) texto += `SITUAÇÃO DAS VÍTIMAS: ${situacaoVit.join(', ')}\n`;
+                if (situacaoVit.length > 0) {
+                    let sitVitStr = situacaoVit.join(', ');
+                    if (agenciaVit.length > 0) sitVitStr += ` (${agenciaVit.join(', ')})`;
+                    texto += `SITUAÇÃO DAS VÍTIMAS: ${sitVitStr}\n`;
+                }
                 texto += `--------------------------------\n`;
                 let recTexto = '';
                 if (rVtr > 0) {
@@ -965,6 +977,7 @@
                 const vCinza = parseInt(document.getElementById('aci_v_cinza').innerText) || 0;
 
                 const situacaoVit = getCheckGridValues('aci_situacao_vit');
+                const agenciaVit = getCheckGridValues('aci_agencia_vit');
                 
                 const rVtr = parseInt(document.getElementById('aci_r_vtr').innerText) || 0;
                 const tVtrs = getCheckGridValues('aci_tipo_vtr');
@@ -1008,7 +1021,11 @@
                     }
                 }
 
-                if (situacaoVit.length > 0) texto += `SITUAÇÃO DAS VÍTIMAS: ${situacaoVit.join(', ')}\n`;
+                if (situacaoVit.length > 0) {
+                    let sitVitStr = situacaoVit.join(', ');
+                    if (agenciaVit.length > 0) sitVitStr += ` (${agenciaVit.join(', ')})`;
+                    texto += `SITUAÇÃO DAS VÍTIMAS: ${sitVitStr}\n`;
+                }
                 texto += `--------------------------------\n`;
                 let recTexto = '';
                 if (rVtr > 0) {
