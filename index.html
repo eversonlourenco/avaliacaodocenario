@@ -354,9 +354,9 @@
             <div class="card">
                 <div class="card-title">2. Situação Encontrada</div>
                 <div class="btn-grid" data-type="checkbox" data-id="inc_situacao_encontrada">
-                    <div class="op-card col-pequeno" data-value="Pequeno incêndio" style="color: #25d366;">Pequeno</div>
-                    <div class="op-card col-medio" data-value="Médio incêndio" style="color: #ffcc00;">Médio</div>
-                    <div class="op-card col-grande" data-value="Grande incêndio" style="color: #ff3333;">Grande</div>
+                    <div class="op-card col-pequeno" data-value="Pequeno incêndio" style="color: #25d366;">Pequeno incêndio</div>
+                    <div class="op-card col-medio" data-value="Médio incêndio" style="color: #ffcc00;">Médio incêndio</div>
+                    <div class="op-card col-grande" data-value="Grande incêndio" style="color: #ff3333;">Grande incêndio</div>
                     <div class="op-card" data-value="Propagando">Propagando</div>
                     <div class="op-card" data-value="Generalizado">Generalizado</div>
                     <div class="op-card" data-value="Controlado">Controlado</div>
@@ -458,22 +458,25 @@
                     <div class="op-card" data-value="SEM VÍTIMAS" onclick="toggleSemVitimas('inc')">Sem Vítimas</div>
                 </div>
                 <div id="inc_bloco_vtr_contadores">
-                    <div class="counter-row"><span class="counter-label" style="color:#25d366">Verdes</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_verde',-1)">-</button><div class="counter-value" id="inc_v_verde">0</div><button class="counter-btn" onclick="step('inc_v_verde',1)">+</button></div></div>
-                    <div class="counter-row"><span class="counter-label" style="color:var(--destaque)">Amarelas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_amarela',-1)">-</button><div class="counter-value" id="inc_v_amarela">0</div><button class="counter-btn" onclick="step('inc_v_amarela',1)">+</button></div></div>
-                    <div class="counter-row"><span class="counter-label" style="color:red">Vermelhas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_vermelha',-1)">-</button><div class="counter-value" id="inc_v_vermelha">0</div><button class="counter-btn" onclick="step('inc_v_vermelha',1)">+</button></div></div>
-                    <div class="counter-row"><span class="counter-label" style="color:#888">Cinzas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_cinza',-1)">-</button><div class="counter-value" id="inc_v_cinza">0</div><button class="counter-btn" onclick="step('inc_v_cinza',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:#fff">Quantidade de Vítimas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_qtd_vitimas',-1)">-</button><div class="counter-value" id="inc_qtd_vitimas">00</div><button class="counter-btn" onclick="step('inc_qtd_vitimas',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:#25d366">Verdes</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_verde',-1)">-</button><div class="counter-value" id="inc_v_verde">00</div><button class="counter-btn" onclick="step('inc_v_verde',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:var(--destaque)">Amarelas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_amarela',-1)">-</button><div class="counter-value" id="inc_v_amarela">00</div><button class="counter-btn" onclick="step('inc_v_amarela',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:red">Vermelhas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_vermelha',-1)">-</button><div class="counter-value" id="inc_v_vermelha">00</div><button class="counter-btn" onclick="step('inc_v_vermelha',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:#888">Cinzas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_cinza',-1)">-</button><div class="counter-value" id="inc_v_cinza">00</div><button class="counter-btn" onclick="step('inc_v_cinza',1)">+</button></div></div>
                 </div>
             </div>
 
             <div class="card">
                 <div class="card-title">6. Situação das Vítimas</div>
                 <div class="btn-grid" data-type="checkbox" data-id="inc_situacao_vit">
-                    <div class="op-card" data-value="Atendimento iniciado (ASE)">Atend. iniciado (ASE)</div>
-                    <div class="op-card" data-value="Atendimento iniciado (SAMU)">Atend. iniciado (SAMU)</div>
+                    <div class="op-card" data-value="Em atendimento (ASE)">Em atendimento (ASE)</div>
+                    <div class="op-card" data-value="Em atendimento (SAMU)">Em atendimento (SAMU)</div>
+                    <div class="op-card" data-value="Em atendimento (CONCESSIONÁRIA)">Em atendimento (CONCESSIONÁRIA)</div>
+                    <div class="op-card" data-value="Recusou atendimento">Recusou Atendimento</div>
                     <div class="op-card" data-value="Removida para o hospital (ASE)">Removida p/ Hosp. (ASE)</div>
                     <div class="op-card" data-value="Removida para o hospital (SAMU)">Removida p/ Hosp. (SAMU)</div>
+                    <div class="op-card" data-value="Removida para o hospital (CONCESSIONÁRIA)">Removida p/ Hosp. (CONCESSIONÁRIA)</div>
                     <div class="op-card" data-value="Removida por populares">Removida por Populares</div>
-                    <div class="op-card" data-value="Recusou atendimento">Recusou Atendimento</div>
                 </div>
             </div>
 
@@ -596,27 +599,30 @@
             </div>
 
             <div class="card">
-                <div class="card-title">6. Controle de Vítimas</div>
-                <div class="btn-grid" data-type="checkbox" data-id="aci_sem_vitimas">
-                    <div class="op-card" data-value="SEM VÍTIMAS" onclick="toggleSemVitimas('aci')">Sem Vítimas</div>
+                <div class="card-title">5. Controle de Vítimas</div>
+                <div class="btn-grid" data-type="checkbox" data-id="inc_sem_vitimas">
+                    <div class="op-card" data-value="SEM VÍTIMAS" onclick="toggleSemVitimas('inc')">Sem Vítimas</div>
                 </div>
-                <div id="aci_bloco_vtr_contadores">
-                    <div class="counter-row"><span class="counter-label" style="color:#25d366">Verdes</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_verde',-1)">-</button><div class="counter-value" id="aci_v_verde">0</div><button class="counter-btn" onclick="step('aci_v_verde',1)">+</button></div></div>
-                    <div class="counter-row"><span class="counter-label" style="color:var(--destaque)">Amarelas</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_amarela',-1)">-</button><div class="counter-value" id="aci_v_amarela">0</div><button class="counter-btn" onclick="step('aci_v_amarela',1)">+</button></div></div>
-                    <div class="counter-row"><span class="counter-label" style="color:red">Vermelhas</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_vermelha',-1)">-</button><div class="counter-value" id="aci_v_vermelha">0</div><button class="counter-btn" onclick="step('aci_v_vermelha',1)">+</button></div></div>
-                    <div class="counter-row"><span class="counter-label" style="color:#888">Cinzas</span><div class="counter-controls"><button class="counter-btn" onclick="step('aci_v_cinza',-1)">-</button><div class="counter-value" id="aci_v_cinza">0</div><button class="counter-btn" onclick="step('aci_v_cinza',1)">+</button></div></div>
+                <div id="inc_bloco_vtr_contadores">
+                    <div class="counter-row"><span class="counter-label" style="color:#fff">Quantidade de Vítimas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_qtd_vitimas',-1)">-</button><div class="counter-value" id="inc_qtd_vitimas">00</div><button class="counter-btn" onclick="step('inc_qtd_vitimas',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:#25d366">Verdes</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_verde',-1)">-</button><div class="counter-value" id="inc_v_verde">00</div><button class="counter-btn" onclick="step('inc_v_verde',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:var(--destaque)">Amarelas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_amarela',-1)">-</button><div class="counter-value" id="inc_v_amarela">00</div><button class="counter-btn" onclick="step('inc_v_amarela',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:red">Vermelhas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_vermelha',-1)">-</button><div class="counter-value" id="inc_v_vermelha">00</div><button class="counter-btn" onclick="step('inc_v_vermelha',1)">+</button></div></div>
+                    <div class="counter-row"><span class="counter-label" style="color:#888">Cinzas</span><div class="counter-controls"><button class="counter-btn" onclick="step('inc_v_cinza',-1)">-</button><div class="counter-value" id="inc_v_cinza">00</div><button class="counter-btn" onclick="step('inc_v_cinza',1)">+</button></div></div>
                 </div>
             </div>
 
             <div class="card">
                 <div class="card-title">7. Situação das Vítimas</div>
                 <div class="btn-grid" data-type="checkbox" data-id="aci_situacao_vit">
-                    <div class="op-card" data-value="Atendimento iniciado (ASE)">Atend. iniciado (ASE)</div>
-                    <div class="op-card" data-value="Atendimento iniciado (SAMU)">Atend. iniciado (SAMU)</div>
+                    <div class="op-card" data-value="Em atendimento (ASE)">Em atendimento (ASE)</div>
+                    <div class="op-card" data-value="Em atendimento (SAMU)">Em atendimento (SAMU)</div>
+                    <div class="op-card" data-value="Em atendimento (CONCESSIONÁRIA)">Em atendimento (CONCESSIONÁRIA)</div>
+                    <div class="op-card" data-value="Recusou atendimento">Recusou Atendimento</div>
                     <div class="op-card" data-value="Removida para o hospital (ASE)">Removida p/ Hosp. (ASE)</div>
                     <div class="op-card" data-value="Removida para o hospital (SAMU)">Removida p/ Hosp. (SAMU)</div>
+                    <div class="op-card" data-value="Removida para o hospital (CONCESSIONÁRIA)">Removida p/ Hosp. (CONCESSIONÁRIA)</div>
                     <div class="op-card" data-value="Removida por populares">Removida por Populares</div>
-                    <div class="op-card" data-value="Recusou atendimento">Recusou Atendimento</div>
                 </div>
             </div>
 
@@ -749,10 +755,11 @@
                 if (cardSem.classList.contains('selected-check')) {
                     blocoContadores.style.opacity = "0.3";
                     blocoContadores.style.pointerEvents = "none";
-                    document.getElementById(`${prefix}_v_verde`).innerText = '0';
-                    document.getElementById(`${prefix}_v_amarela`).innerText = '0';
-                    document.getElementById(`${prefix}_v_vermelha`).innerText = '0';
-                    document.getElementById(`${prefix}_v_cinza`).innerText = '0';
+                    document.getElementById(`${prefix}_qtd_vitimas`).innerText = '00';
+                    document.getElementById(`${prefix}_v_verde`).innerText = '00';
+                    document.getElementById(`${prefix}_v_amarela`).innerText = '00';
+                    document.getElementById(`${prefix}_v_vermelha`).innerText = '00';
+                    document.getElementById(`${prefix}_v_cinza`).innerText = '00';
                 } else {
                     blocoContadores.style.opacity = "1";
                     blocoContadores.style.pointerEvents = "auto";
@@ -808,7 +815,9 @@
             let curr = parseInt(el.innerText) || 0;
             curr = curr + val;
             if(curr < 0) curr = 0;
-            el.innerText = curr;
+            
+            // Garante a formatação visual com dois dígitos (ex: 02 em vez de 2)
+            el.innerText = curr < 10 ? '0' + curr : curr;
         }
 
         function compilarRelatorioTexto() {
@@ -819,7 +828,6 @@
             let texto = `*AVALIAÇÃO DA CENA*\n`;
             texto += `*DATA:* ${dataStr}\n`;
             texto += `*HORA:* ${horaStr}\n`;
-            //texto += `--------------------------------\n`;
             
             if (moduloAtual === 'incendio') {
                 const tipoPai = getRadioGridValue('inc_tipo_pai');
@@ -851,7 +859,6 @@
                 const situacaoEnc = getCheckGridValues('inc_situacao_encontrada');
                 const danos = getCheckGridValues('inc_danos');
                 
-                // Mapeamento e estruturação correta dos materiais por classe
                 let materiaisUnificados = [];
                 const classesDisponiveis = [
                     { id: 'a', label: 'Sólidos (Classe A)' },
@@ -869,6 +876,7 @@
                 });
                 
                 const semVitimas = getCheckGridValues('inc_sem_vitimas').length > 0;
+                const qtdVitimasTotal = parseInt(document.getElementById('inc_qtd_vitimas').innerText) || 0;
                 const vVerde = parseInt(document.getElementById('inc_v_verde').innerText) || 0;
                 const vAmarela = parseInt(document.getElementById('inc_v_amarela').innerText) || 0;
                 const vVermelha = parseInt(document.getElementById('inc_v_vermelha').innerText) || 0;
@@ -882,12 +890,11 @@
                 const observacoes = document.getElementById('inc_observacoes').value.trim();
 
                 texto += `*MISSÃO:* INCÊNDIO\n`;
-texto += `--------------------------------\n`;
+                texto += `--------------------------------\n`;
                 if (tipoPai) {
                     texto += `TIPO: ${tipoPai}\n`;
                     if(qtdVeiculos > 0) texto += `QUANTIDADE DE VEÍCULOS: ${qtdVeiculos}\n`;
                     if(subtiposList.length > 0) {
-                        // Se for Edificações Residenciais, divide a quebra de linha conforme padrão solicitado
                         if(subtiposList.includes('Edificações Residenciais')) {
                             texto += `SUBTIPO: Edificações Residenciais${infoResidencial}\n`;
                         } else {
@@ -895,15 +902,17 @@ texto += `--------------------------------\n`;
                         }
                     }
                 }
-texto += `--------------------------------\n`;
+                texto += `--------------------------------\n`;
                 if (situacaoEnc.length > 0) texto += `SITUAÇÃO ENCONTRADA: ${situacaoEnc.join(', ')}\n`;
                 if (danos.length > 0) texto += `DANOS: ${danos.join(', ')}\n`;
                 if (materiaisUnificados.length > 0) texto += `MATERIAL QUEIMANDO: ${materiaisUnificados.join(' | ')}\n`;
-texto += `--------------------------------\n`;
+                texto += `--------------------------------\n`;
+                
                 if (semVitimas) {
                     texto += `VÍTIMAS: Sem vítimas\n`;
                 } else {
                     let vitTexto = '';
+                    if (qtdVitimasTotal > 0) vitTexto += `${qtdVitimasTotal} | `;
                     if (vVerde > 0) vitTexto += `Verdes: ${vVerde} | `;
                     if (vAmarela > 0) vitTexto += `Amarelas: ${vAmarela} | `;
                     if (vVermelha > 0) vitTexto += `Vermelhas: ${vVermelha} | `;
@@ -915,7 +924,7 @@ texto += `--------------------------------\n`;
                 }
 
                 if (situacaoVit.length > 0) texto += `SITUAÇÃO DAS VÍTIMAS: ${situacaoVit.join(', ')}\n`;
-texto += `--------------------------------\n`;
+                texto += `--------------------------------\n`;
                 let recTexto = '';
                 if (rVtr > 0) {
                     recTexto += `Vtrs: ${rVtr}`;
@@ -949,6 +958,7 @@ texto += `--------------------------------\n`;
                 const materialQual = document.getElementById('aci_material_qual').value.trim();
 
                 const semVitimas = getCheckGridValues('aci_sem_vitimas').length > 0;
+                const qtdVitimasTotal = parseInt(document.getElementById('aci_qtd_vitimas').innerText) || 0;
                 const vVerde = parseInt(document.getElementById('aci_v_verde').innerText) || 0;
                 const vAmarela = parseInt(document.getElementById('aci_v_amarela').innerText) || 0;
                 const vVermelha = parseInt(document.getElementById('aci_v_vermelha').innerText) || 0;
@@ -962,14 +972,14 @@ texto += `--------------------------------\n`;
                 const observacoes = document.getElementById('aci_observacoes').value.trim();
 
                 texto += `*MISSÃO:* ACIDENTE COM VEÍCULO\n`;
-texto += `--------------------------------\n`;
+                texto += `--------------------------------\n`;
                 if (qtdVeiculos > 0) texto += `VEÍCULOS ENVOLVIDOS: ${qtdVeiculos}\n`;
                 
                 if (tipoPai) {
                     texto += `TIPO: ${tipoPai}\n`;
                     if (subtiposList.length > 0) texto += `SUBTIPO: ${subtiposList.join(', ')}\n`;
                 }
-texto += `--------------------------------\n`;                
+                texto += `--------------------------------\n`;                
                 if (situacaoEnc.length > 0) texto += `SITUAÇÃO ENCONTRADA: ${situacaoEnc.join(', ')}\n`;
                 if (danos.length > 0) texto += `DANOS: ${danos.join(', ')}\n`;
                 if (blocoBloqueioCompleto.length > 0) texto += `BLOQUEIO DA VIA: ${blocoBloqueioCompleto.join(', ')}\n`;
@@ -981,11 +991,13 @@ texto += `--------------------------------\n`;
                 } else if (materialQual) {
                     texto += `MATERIAL TRANSPORTADO: ${materialQual}\n`;
                 }
-texto += `--------------------------------\n`;
+                texto += `--------------------------------\n`;
+                
                 if (semVitimas) {
                     texto += `VÍTIMAS: Sem vítimas\n`;
                 } else {
                     let vitTexto = '';
+                    if (qtdVitimasTotal > 0) vitTexto += `${qtdVitimasTotal} | `;
                     if (vVerde > 0) vitTexto += `Verdes: ${vVerde} | `;
                     if (vAmarela > 0) vitTexto += `Amarelas: ${vAmarela} | `;
                     if (vVermelha > 0) vitTexto += `Vermelhas: ${vVermelha} | `;
@@ -997,7 +1009,7 @@ texto += `--------------------------------\n`;
                 }
 
                 if (situacaoVit.length > 0) texto += `SITUAÇÃO DAS VÍTIMAS: ${situacaoVit.join(', ')}\n`;
-texto += `--------------------------------\n`;
+                texto += `--------------------------------\n`;
                 let recTexto = '';
                 if (rVtr > 0) {
                     recTexto += `Vtrs: ${rVtr}`;
