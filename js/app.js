@@ -26,7 +26,7 @@ const SITUACAO_VITIMAS = { key:"situacaoVitimas", label:"Situação das Vítimas
   options:["Em atendimento","Removida para o hospital","Removida por populares","Recusou atendimento"],
   extra:{ label:"Órgão responsável", options:["ASE","ABSR","SAMU","CONCESSIONÁRIA","OUTROS"] } };
 
-const RECURSOS = { key:"recursos", type:"recursos", viaturaOptions:["ABSL","ABS","ASE","ABSR","AR"] };
+const RECURSOS = { key:"recursos", type:"recursos", viaturaOptions:["ABSL","ABS","ASE","ABSR","AR","AT"] };
 
 const OBSERVACOES = { key:"observacoes", label:"Observações", type:"texto" };
 
