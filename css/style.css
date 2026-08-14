@@ -320,6 +320,51 @@ body{
   padding-bottom:8px; border-bottom:1px solid var(--red-dim);
 }
 
+/* Alerta de Localização Desativada */
+.geo-alert-box {
+  background: var(--amber-dim);
+  border: 1px solid var(--amber);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.geo-alert-title {
+  color: var(--amber);
+  font-weight: 800;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.geo-alert-desc {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.btn-geo {
+  background-color: var(--amber);
+  color: #121212;
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  align-self: flex-start;
+  margin-top: 4px;
+  transition: opacity 0.2s;
+}
+
+.btn-geo:active {
+  opacity: 0.85;
+}
+
 /* Localização / Ticket do Informe */
 .ticket{
   background: #0a0a0a; color:#d4af37; border-radius:8px; padding:18px;
