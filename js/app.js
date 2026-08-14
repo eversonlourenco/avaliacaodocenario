@@ -18,7 +18,7 @@ const MATERIAL_EDIFICACOES = {
 const SITUACAO_INCENDIO = { key:"situacao", label:"Situação Encontrada", type:"checkbox",
   options:["Pequeno Incêndio","Médio Incêndio","Grande Incêndio","Propagando","Generalizado","Controlado","Extinto","Rescaldo"] };
 
-const DANOS = { key:"danos", label:"Existe bloqueioda via", type:"checkbox", options:["Não","Parcial","Total"] };
+const DANOS = { key:"danos", label:"Existe bloqueioda via", type:"checkbox", options:["Não","Parcial","Total","Vazamento de carga"] };
 
 const VITIMAS = { key:"vitimas", type:"vitimas" };
 
@@ -38,8 +38,8 @@ function perguntasPadrao(materialBlock, extras) {
   return base;
 }
 
-const BLOQUEIO_VIA = { key:"bloqueio", label:"Existe Bloqueio da Via", type:"checkbox",
-  options:["Não","Parcial","Total","Vazamento de carga","Sentido Rio de Janeiro","Sentido Juiz de Fora","Sentido Três Rios","Sentido Paraíba do Sul","Sentido Levi Gasparian","Sentido Volta Redonda","Sentido Sapucaia"] };
+const BLOQUEIO_VIA = { key:"bloqueio", label:"Em qual sentido", type:"checkbox",
+  options:["Sentido Rio de Janeiro","Sentido Juiz de Fora","Sentido Três Rios","Sentido Paraíba do Sul","Sentido Levi Gasparian","Sentido Volta Redonda","Sentido Sapucaia"] };
 
 const MATERIAL_TRANSPORTADO = { key:"materialTransportado", label:"Tipo de Material Transportado", type:"checkboxComTexto",
   options:["Carga Comum","Inflamável","Química","Explosiva"], textoLabel:"Qual" };
