@@ -143,7 +143,7 @@ const state = {
   screen: 1,
   tipoId: null,
   subtipoIds: [],
-  subtipoCounts: {}, // Para veículos (ex: { "Automóvel": 2, "Moto": 1 })
+  subtipoCounts: {}, // Para contagem por subtipo em veículos (ex: { "Automóvel": 2, "Moto": 1 })
   subtipoOutros: "",
   quantidadeVeiculos: 0,
   residencial: { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] },
@@ -303,17 +303,38 @@ function renderSubtipoScreen(){
   c.appendChild(el("h1","screen-title", t.nome));
   c.appendChild(el("p","screen-sub", t.quantidadeVeiculos ? "Toque no veículo para somar à quantidade" : "Podendo ser escolhido mais de um subtipo"));
 
+  // Se a ocorrência envolve veículos
   if(t.quantidadeVeiculos){
     let total = 0;
     Object.values(state.subtipoCounts).forEach(v => total += (v || 0));
     state.quantidadeVeiculos = total;
 
-    const yellowBox = el("div","counter-yellow-box");
-    const countText = String(total).padStart(2,"0") + ", veículos escolhidos";
-    yellowBox.appendChild(el("div","vehicles-summary-text", countText));
+    // Substitui o botão "-00+" por "00, veículos escolhidos"
+    const yellowBox = el("div","counter-display-box");
+    const countFormatted = String(total).padStart(2,"0");
+    const countText = `${countFormatted}, veículos escolhidos`;
+    
+    const labelBox = el("div","counter-display-text", countText);
+    yellowBox.appendChild(labelBox);
+
+    // Botão auxiliar para zerar a seleção de veículos caso o usuário erre a contagem
+    if(total > 0){
+      const btnClear = el("button","btn-clear-count","Zerar veículos");
+      btnClear.type = "button";
+      btnClear.onclick = (e) => {
+        e.stopPropagation();
+        state.subtipoCounts = {};
+        state.subtipoIds = [];
+        state.quantidadeVeiculos = 0;
+        render();
+      };
+      yellowBox.appendChild(btnClear);
+    }
+
     c.appendChild(yellowBox);
   }
 
+  // Lista de Subtipos
   const list = el("div","grid-2-list");
   t.subtipos.forEach(s=>{
     let count = state.subtipoCounts[s.id] || 0;
@@ -325,13 +346,15 @@ function renderSubtipoScreen(){
     const labelSpan = el("span","btn-label-clean", s.nome);
     btn.appendChild(labelSpan);
 
+    // Exibe contagem individual no botão quando for veículo
     if(t.quantidadeVeiculos && count > 0){
-      const badge = el("span","badge-count", String(count));
+      const badge = el("span","badge-count", `${count}`);
       btn.appendChild(badge);
     }
 
     btn.onclick = ()=>{
       if(t.quantidadeVeiculos){
+        // Clique incrementa +1 veículo
         state.subtipoCounts[s.id] = (state.subtipoCounts[s.id] || 0) + 1;
         if(!state.subtipoIds.includes(s.id)){
           state.subtipoIds.push(s.id);
@@ -346,14 +369,16 @@ function renderSubtipoScreen(){
   });
   c.appendChild(list);
 
-  // Caixa de texto "Outros"
+  // Caixa de texto "Outros" na Tela de Subtipo
   const outrosBox = el("div","subpanel mt-2");
-  outrosBox.appendChild(el("div","field-label","Outros (Caso a opção desejada não esteja na lista)"));
+  outrosBox.appendChild(el("div","field-label","Outros"));
   const inputOutros = el("input","text-input");
   inputOutros.type = "text";
-  inputOutros.placeholder = "Digite outro subtipo...";
+  inputOutros.placeholder = "Caso a opção desejada não esteja na lista, digite aqui...";
   inputOutros.value = state.subtipoOutros || "";
-  inputOutros.oninput = (e)=>{ state.subtipoOutros = e.target.value; };
+  inputOutros.oninput = (e)=>{ 
+    state.subtipoOutros = e.target.value;
+  };
   outrosBox.appendChild(inputOutros);
   c.appendChild(outrosBox);
 
@@ -361,13 +386,15 @@ function renderSubtipoScreen(){
     c.appendChild(renderResidencialDetalhes());
   }
 
-  // Botões de Ação na mesma linha (Voltar e Avançar)
+  // Botões de Navegação: "Voltar" e "Avançar" na MESMA LINHA
   const navActions = el("div","nav-actions-row");
   
+  // Botão Voltar: Azul com texto branco
   const btnBack = el("button","btn-action btn-blue flex-1","Voltar");
   btnBack.type="button";
   btnBack.onclick = ()=>{ state.screen=1; render(); window.scrollTo(0,0); };
 
+  // Botão Avançar: Vermelho com texto branco
   const next = el("button","btn-action btn-red flex-1","Avançar");
   next.type="button";
   
@@ -458,13 +485,16 @@ function renderPerguntasScreen(){
     c.appendChild(renderPergunta(p));
   });
 
+  // Botões de Navegação: "Voltar" e "Avançar" na MESMA LINHA
   const navActions = el("div","nav-actions-row");
   
+  // Botão Voltar: Azul com texto branco
   const btnBack = el("button","btn-action btn-blue flex-1","Voltar");
   btnBack.type="button";
   btnBack.onclick = ()=>{ state.screen=2; render(); window.scrollTo(0,0); };
 
-  const next = el("button","btn-action btn-red flex-1","GERAR INFORME OPERACIONAL");
+  // Botão Avançar / Gerar Informe: Vermelho com texto branco
+  const next = el("button","btn-action btn-red flex-1","Avançar");
   next.type="button";
   next.onclick = ()=>{ 
     state.geradoEm = new Date(); 
@@ -655,7 +685,7 @@ function renderTextoBlock(p, box){
   return box;
 }
 
-/* ---------- Geração do Informe ---------- */
+/* ---------- Geração do Informe Operacional ---------- */
 
 const SEPARADOR = "--------------------------------";
 
@@ -681,6 +711,7 @@ function gerarTextoInforme(){
   // Formatação do SUBTIPO
   let listaSubtiposFormatada = [];
   if(t.quantidadeVeiculos){
+    // Cada clique adiciona o veículo na contagem
     subs.forEach(s => {
       let qtd = state.subtipoCounts[s.id] || 1;
       for(let i=0; i<qtd; i++) {
@@ -699,6 +730,7 @@ function gerarTextoInforme(){
 
   if(listaSubtiposFormatada.length){
     if(t.quantidadeVeiculos){
+      // Formato exigido para Veículos: Veículo x Veículo
       loc.push("SUBTIPO: " + listaSubtiposFormatada.join(" x "));
     } else {
       loc.push("SUBTIPO: " + listaSubtiposFormatada.join(", "));
@@ -745,13 +777,17 @@ function gerarTextoInforme(){
         .map(x=>x.nome + ": " + x.valores.join(", "));
       if(partes.length) {
         if(sit.length) sit.push(SEPARADOR);
-        sit.push("INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n"));
+        sit.push("INFORMAÇÕES ADICIONAIS:
+" + partes.join("
+"));
       }
     } else if(p.type==="contadores" && r.counts){
       const entries = Object.entries(r.counts).filter(([k,v])=>v>0);
       if(entries.length) {
         if(sit.length) sit.push(SEPARADOR);
-        sit.push("FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n"));
+        sit.push("FERRAMENTAS:
+" + entries.map(([k,v])=> k + " (" + v + ")").join("
+"));
       }
     }
   });
@@ -797,7 +833,10 @@ function gerarTextoInforme(){
   blocos.push(obs);
 
   const naoVazios = blocos.filter(b=>b.length>0);
-  return naoVazios.map(b=>b.join("\n")).join("\n"+SEPARADOR+"\n");
+  return naoVazios.map(b=>b.join("
+")).join("
+"+SEPARADOR+"
+");
 }
 
 /* ---------- Tela 4: Informe ---------- */
