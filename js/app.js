@@ -18,8 +18,6 @@ const MATERIAL_EDIFICACOES = {
 const SITUACAO_INCENDIO = { key:"situacao", label:"Situação Encontrada", type:"checkbox",
   options:["Pequeno Incêndio","Médio Incêndio","Grande Incêndio","Propagando","Generalizado","Controlado","Extinto","Rescaldo"] };
 
-const DANOS = { key:"danos", label:"Existe bloqueioda via", type:"checkbox", options:["Não","Parcial","Total","Vazamento de carga"] };
-
 const VITIMAS = { key:"vitimas", type:"vitimas" };
 
 const SITUACAO_VITIMAS = { key:"situacaoVitimas", label:"Situação das Vítimas", type:"checkbox",
@@ -38,7 +36,10 @@ function perguntasPadrao(materialBlock, extras) {
   return base;
 }
 
-const BLOQUEIO_VIA = { key:"bloqueio", label:"Em qual sentido", type:"checkbox",
+const BLOQUEIO_VIA = { key:"bloqueio", label:"Existe Bloqueio da Via", type:"checkbox",
+  options:["Não","Parcial","Total","Vazamento de carga"] };
+
+const SENTIDO_VIA = { key:"sentido", label:"Sentido", type:"checkbox",
   options:["Sentido Rio de Janeiro","Sentido Juiz de Fora","Sentido Três Rios","Sentido Paraíba do Sul","Sentido Levi Gasparian","Sentido Volta Redonda","Sentido Sapucaia"] };
 
 const MATERIAL_TRANSPORTADO = { key:"materialTransportado", label:"Tipo de Material Transportado", type:"checkboxComTexto",
@@ -48,7 +49,7 @@ const SITUACAO_ACIDENTE = { key:"situacao", label:"Situação Encontrada", type:
   options:["Vítima dentro do veículo","Vítima já fora do veículo","Vítima presa às ferragens","Vítima ejetada","Múltiplas vítimas","Veículo com GNV","Veículo Híbrido","Veículo 100% Elétrico","Carga Perigosa"] };
 
 function perguntasAcidenteVeicular() {
-  return [SITUACAO_ACIDENTE, DANOS, BLOQUEIO_VIA, MATERIAL_TRANSPORTADO, VITIMAS, SITUACAO_VITIMAS, RECURSOS, OBSERVACOES];
+  return [SITUACAO_ACIDENTE, BLOQUEIO_VIA, SENTIDO_VIA, MATERIAL_TRANSPORTADO, VITIMAS, SITUACAO_VITIMAS, RECURSOS, OBSERVACOES];
 }
 
 const SITUACAO_VEGETACAO = SITUACAO_INCENDIO;
@@ -105,7 +106,7 @@ const CATEGORIAS_OCORRENCIAS = [
         id:"fogo_veiculo", nome:"Fogo em Veículo", missao:"INCÊNDIO",
         quantidadeVeiculos:true,
         subtipos:["Automóvel","Caminhão","Moto","Moto elétrica","Trem","Van","Ônibus"].map(n=>({id:n,nome:n})),
-        perguntas: perguntasPadrao(null, [MATERIAL_TRANSPORTADO])
+        perguntas: perguntasPadrao(null, [BLOQUEIO_VIA, SENTIDO_VIA, MATERIAL_TRANSPORTADO])
       },
       {
         id:"incendio_edif", nome:"Incêndio em Edificações", missao:"INCÊNDIO",
@@ -345,7 +346,6 @@ function renderSubtipoScreen(){
   if(t.quantidadeVeiculos){
     const yellowBox = el("div","vehicle-summary-box");
     
-    // Mostra apenas os veículos separados por 'x', sem o '00,' antes.
     const textContent = state.veiculosSelecionados.length > 0 
       ? state.veiculosSelecionados.join(" x ") 
       : "Nenhum veículo selecionado";
@@ -368,7 +368,6 @@ function renderSubtipoScreen(){
 
   const list = el("div","grid-2-list");
   
-  // Renderiza as opções padrão
   t.subtipos.forEach(s=>{
     if(t.quantidadeVeiculos){
       const count = state.veiculosSelecionados.filter(item => item === s.nome).length;
@@ -393,7 +392,6 @@ function renderSubtipoScreen(){
     }
   });
 
-  // Renderiza as opções customizadas (digitadas pelo usuário em "Outros")
   if (t.quantidadeVeiculos) {
     const standardNames = t.subtipos.map(s => s.nome);
     const customVehicles = [...new Set(state.veiculosSelecionados.filter(v => !standardNames.includes(v)))];
@@ -415,7 +413,6 @@ function renderSubtipoScreen(){
       const btn = el("button","opt-row selected");
       btn.type = "button";
       btn.appendChild(el("span","btn-label-clean", customName));
-      // Clicar em um customizado de não-veículo remove ele da lista
       btn.onclick = ()=>{
         state.subtiposAdicionais.splice(idx, 1);
         render();
@@ -426,7 +423,6 @@ function renderSubtipoScreen(){
 
   c.appendChild(list);
 
-  /* Caixa de texto Outros com Botão OK */
   const fieldOutros = el("div", "field-outros");
   fieldOutros.appendChild(el("div", "field-label", "Outros (digite e clique em OK para adicionar)"));
   
@@ -805,18 +801,18 @@ function gerarTextoInforme(){
     if(!r) return;
     if(p.type==="checkbox" && p.key==="situacao" && r.opts && r.opts.length){
       sit.push("SITUAÇÃO ENCONTRADA: " + r.opts.join(", "));
-    } else if(p.type==="checkbox" && p.key==="danos" && r.opts && r.opts.length){
-      sit.push("BLOQUEIO DA VIA: " + r.opts.join(", "));
     } else if(p.type==="material" && r.classes){
       const partes = Object.entries(r.classes)
         .filter(([k,itens])=>itens.length>0)
         .map(([k,itens])=>k+" — "+itens.join(", "));
       if(partes.length) sit.push("MATERIAL QUEIMANDO: " + partes.join(" | "));
     } else if(p.type==="checkbox" && p.key==="bloqueio" && r.opts && r.opts.length){
+      sit.push("BLOQUEIO DA VIA: " + r.opts.join(", "));
+    } else if(p.type==="checkbox" && p.key==="sentido" && r.opts && r.opts.length){
       sit.push("SENTIDO: " + r.opts.join(", "));
     } else if(p.type==="checkboxComTexto" && p.key==="materialTransportado" && ((r.opts&&r.opts.length)||r.texto)){
       let linha = "MATERIAL TRANSPORTADO: " + (r.opts&&r.opts.length? r.opts.join(", ") : "");
-      if(r.texto && r.texto.trim()) linha += " (" + r.texto.trim() + ")";
+      if(r.texto && r.texto.trim()) linha += " (Qual: " + r.texto.trim() + ")";
       sit.push(linha.trim());
     } else if(p.type==="grupos"){
       const partes = p.grupos
@@ -892,7 +888,6 @@ function renderInformeScreen(){
   const c = el("div","screen");
   c.appendChild(el("h1","screen-title","Informe Operacional"));
 
-  /* Alerta solicitando para ligar a localização se não houver coordenadas */
   if(!state.coordenadas) {
     const alertBox = el("div", "geo-alert-box");
     
@@ -965,6 +960,7 @@ function renderInformeScreen(){
 
   return c;
 }
+
 /* ---------- Inicialização ---------- */
 
 render();
