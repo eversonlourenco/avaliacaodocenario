@@ -144,9 +144,8 @@ const state = {
   screen: 1,
   tipoId: null,
   subtipoIds: [],
+  subtiposAdicionais: [],
   veiculosSelecionados: [],
-  subtipoOutros: "",
-  quantidadeVeiculos: 0,
   residencial: { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] },
   respostas: {},
   endereco: "",
@@ -167,9 +166,8 @@ function resetForm(){
   state.screen = 1;
   state.tipoId = null;
   state.subtipoIds = [];
+  state.subtiposAdicionais = [];
   state.veiculosSelecionados = [];
-  state.subtipoOutros = "";
-  state.quantidadeVeiculos = 0;
   state.residencial = { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] };
   state.respostas = {};
   state.geradoEm = null;
@@ -306,9 +304,8 @@ function renderTipoScreen(){
       btn.onclick = ()=>{
         state.tipoId=t.id;
         state.subtipoIds=[]; 
+        state.subtiposAdicionais=[];
         state.veiculosSelecionados=[];
-        state.subtipoOutros="";
-        state.quantidadeVeiculos=0; 
         state.respostas={}; 
         state.screen=2; 
         render(); 
@@ -335,11 +332,10 @@ function renderSubtipoScreen(){
   if(t.quantidadeVeiculos){
     const yellowBox = el("div","vehicle-summary-box");
     
-    const countPad = String(state.veiculosSelecionados.length).padStart(2, "0");
-    const listStr = state.veiculosSelecionados.join(" x ");
+    // Mostra apenas os veículos separados por 'x', sem o '00,' antes.
     const textContent = state.veiculosSelecionados.length > 0 
-      ? `${countPad}, ${listStr}` 
-      : "00, Nenhum veículo selecionado";
+      ? state.veiculosSelecionados.join(" x ") 
+      : "Nenhum veículo selecionado";
 
     const textEl = el("div", "vehicle-summary-text", textContent);
     yellowBox.appendChild(textEl);
@@ -358,6 +354,8 @@ function renderSubtipoScreen(){
   }
 
   const list = el("div","grid-2-list");
+  
+  // Renderiza as opções padrão
   t.subtipos.forEach(s=>{
     if(t.quantidadeVeiculos){
       const count = state.veiculosSelecionados.filter(item => item === s.nome).length;
@@ -381,19 +379,79 @@ function renderSubtipoScreen(){
       list.appendChild(btn);
     }
   });
+
+  // Renderiza as opções customizadas (digitadas pelo usuário em "Outros")
+  if (t.quantidadeVeiculos) {
+    const standardNames = t.subtipos.map(s => s.nome);
+    const customVehicles = [...new Set(state.veiculosSelecionados.filter(v => !standardNames.includes(v)))];
+    
+    customVehicles.forEach(customName => {
+      const count = state.veiculosSelecionados.filter(item => item === customName).length;
+      const btn = el("button","opt-row selected");
+      btn.type = "button";
+      btn.appendChild(el("span","btn-label-clean", customName));
+      btn.appendChild(el("span","count-badge", `+${count}`));
+      btn.onclick = ()=>{
+        state.veiculosSelecionados.push(customName);
+        render();
+      };
+      list.appendChild(btn);
+    });
+  } else {
+    state.subtiposAdicionais.forEach((customName, idx) => {
+      const btn = el("button","opt-row selected");
+      btn.type = "button";
+      btn.appendChild(el("span","btn-label-clean", customName));
+      // Clicar em um customizado de não-veículo remove ele da lista
+      btn.onclick = ()=>{
+        state.subtiposAdicionais.splice(idx, 1);
+        render();
+      };
+      list.appendChild(btn);
+    });
+  }
+
   c.appendChild(list);
 
-  /* Caixa de texto Outros */
+  /* Caixa de texto Outros com Botão OK */
   const fieldOutros = el("div", "field-outros");
-  fieldOutros.appendChild(el("div", "field-label", "Outros (descreva caso não esteja na lista)"));
+  fieldOutros.appendChild(el("div", "field-label", "Outros (digite e clique em OK para adicionar)"));
+  
+  const outrosRow = el("div", "outros-row");
+  
   const inputOutros = el("input", "input-outros");
   inputOutros.type = "text";
-  inputOutros.placeholder = "Digite outra opção de subtipo...";
-  inputOutros.value = state.subtipoOutros || "";
-  inputOutros.oninput = (e) => {
-    state.subtipoOutros = e.target.value;
+  inputOutros.placeholder = "Digite outra opção...";
+  inputOutros.id = "input-custom-subtipo";
+  
+  const btnOk = el("button", "btn-ok", "OK");
+  btnOk.type = "button";
+  
+  const adicionarCustomizado = () => {
+    const val = inputOutros.value.trim();
+    if (val) {
+      if (t.quantidadeVeiculos) {
+        state.veiculosSelecionados.push(val);
+      } else {
+        if (!state.subtiposAdicionais.includes(val)) {
+          state.subtiposAdicionais.push(val);
+        }
+      }
+      render();
+    }
   };
-  fieldOutros.appendChild(inputOutros);
+
+  btnOk.onclick = adicionarCustomizado;
+  inputOutros.onkeypress = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      adicionarCustomizado();
+    }
+  };
+
+  outrosRow.appendChild(inputOutros);
+  outrosRow.appendChild(btnOk);
+  fieldOutros.appendChild(outrosRow);
   c.appendChild(fieldOutros);
 
   if(algumSubtipoResidencial()){
@@ -401,8 +459,8 @@ function renderSubtipoScreen(){
   }
 
   const isNextDisabled = t.quantidadeVeiculos
-    ? (state.veiculosSelecionados.length === 0 && (!state.subtipoOutros || state.subtipoOutros.trim() === ""))
-    : (state.subtipoIds.length === 0 && (!state.subtipoOutros || state.subtipoOutros.trim() === ""));
+    ? state.veiculosSelecionados.length === 0
+    : (state.subtipoIds.length === 0 && state.subtiposAdicionais.length === 0);
 
   const nav = renderNavButtons(
     () => { state.screen = 1; render(); window.scrollTo(0, 0); },
@@ -481,14 +539,10 @@ function renderPerguntasScreen(){
   
   let subtipoText = "";
   if(t.quantidadeVeiculos){
-    let items = [...state.veiculosSelecionados];
-    if(state.subtipoOutros && state.subtipoOutros.trim() !== "") items.push(state.subtipoOutros.trim());
-    subtipoText = items.join(" x ");
+    subtipoText = state.veiculosSelecionados.join(" x ");
   } else {
-    subtipoText = subtiposSelecionados().map(s=>s.nome).join(", ");
-    if(state.subtipoOutros && state.subtipoOutros.trim() !== ""){
-      subtipoText += (subtipoText ? " / " : "") + state.subtipoOutros.trim();
-    }
+    let items = subtiposSelecionados().map(s=>s.nome).concat(state.subtiposAdicionais);
+    subtipoText = items.join(", ");
   }
 
   c.appendChild(el("p","screen-sub", t.nome + (subtipoText ? " — " + subtipoText : "")));
@@ -712,18 +766,11 @@ function gerarTextoInforme(){
   loc.push("TIPO: " + t.nome.toUpperCase());
 
   if(t.quantidadeVeiculos){
-    let lista = [...state.veiculosSelecionados];
-    if(state.subtipoOutros && state.subtipoOutros.trim() !== ""){
-      lista.push(state.subtipoOutros.trim());
-    }
-    if(lista.length > 0){
-      loc.push("SUBTIPO: " + lista.join(" x "));
+    if(state.veiculosSelecionados.length > 0){
+      loc.push("SUBTIPO: " + state.veiculosSelecionados.join(" x "));
     }
   } else {
-    let listaSubtipos = subs.map(s => s.nome);
-    if(state.subtipoOutros && state.subtipoOutros.trim() !== ""){
-      listaSubtipos.push(state.subtipoOutros.trim());
-    }
+    let listaSubtipos = subs.map(s => s.nome).concat(state.subtiposAdicionais);
     if(listaSubtipos.length > 0){
       loc.push("SUBTIPO: " + listaSubtipos.join(", "));
     }
