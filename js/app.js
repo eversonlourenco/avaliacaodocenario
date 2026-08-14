@@ -124,6 +124,7 @@ const CATEGORIAS_OCORRENCIAS = [
   }
 ];
 
+/* Ordenação A-Z dos Subtipos internos de cada Tipo */
 CATEGORIAS_OCORRENCIAS.forEach(cat => {
   cat.tipos.forEach(t => {
     t.subtipos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -143,7 +144,7 @@ const state = {
   screen: 1,
   tipoId: null,
   subtipoIds: [],
-  subtipoCounts: {}, // Para contagem por subtipo em veículos (ex: { "Automóvel": 2, "Moto": 1 })
+  veiculosSelecionados: [],
   subtipoOutros: "",
   quantidadeVeiculos: 0,
   residencial: { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] },
@@ -157,12 +158,16 @@ const state = {
 function tipoAtual(){ return obterTodosTipos().find(t=>t.id===state.tipoId); }
 function subtiposSelecionados(){ const t=tipoAtual(); return t ? t.subtipos.filter(s=>state.subtipoIds.includes(s.id)) : []; }
 function algumSubtipoResidencial(){ return subtiposSelecionados().some(s=>s.residencial); }
+function toggleSubtipo(id){
+  const i = state.subtipoIds.indexOf(id);
+  if(i>=0) state.subtipoIds.splice(i,1); else state.subtipoIds.push(id);
+}
 
 function resetForm(){
   state.screen = 1;
   state.tipoId = null;
   state.subtipoIds = [];
-  state.subtipoCounts = {};
+  state.veiculosSelecionados = [];
   state.subtipoOutros = "";
   state.quantidadeVeiculos = 0;
   state.residencial = { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] };
@@ -237,6 +242,29 @@ function isChecked(key, opt){
   return !!(r && r.opts && r.opts.includes(opt));
 }
 
+/* ---------- Componente de Navegação na mesma linha ---------- */
+
+function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = false) {
+  const container = el("div", "nav-buttons");
+
+  if (onBack) {
+    const btnBack = el("button", "btn-blue", "Voltar");
+    btnBack.type = "button";
+    btnBack.onclick = onBack;
+    container.appendChild(btnBack);
+  }
+
+  if (onNext) {
+    const btnNext = el("button", "btn-primary", nextText);
+    btnNext.type = "button";
+    btnNext.disabled = nextDisabled;
+    btnNext.onclick = onNext;
+    container.appendChild(btnNext);
+  }
+
+  return container;
+}
+
 /* ---------- Render ---------- */
 
 const app = document.getElementById("app");
@@ -277,8 +305,8 @@ function renderTipoScreen(){
       btn.appendChild(el("span","btn-label-clean", t.nome));
       btn.onclick = ()=>{
         state.tipoId=t.id;
-        state.subtipoIds=[];
-        state.subtipoCounts={};
+        state.subtipoIds=[]; 
+        state.veiculosSelecionados=[];
         state.subtipoOutros="";
         state.quantidadeVeiculos=0; 
         state.respostas={}; 
@@ -299,33 +327,28 @@ function renderTipoScreen(){
 function renderSubtipoScreen(){
   const t = tipoAtual();
   const c = el("div","screen");
-  
+
   c.appendChild(el("h1","screen-title", t.nome));
-  c.appendChild(el("p","screen-sub", t.quantidadeVeiculos ? "Toque no veículo para somar à quantidade" : "Podendo ser escolhido mais de um subtipo"));
+  c.appendChild(el("p","screen-sub", t.quantidadeVeiculos ? "Clique nos veículos para adicionar (cada clique conta +1)" : "Podendo ser escolhido mais de um subtipo"));
 
-  // Se a ocorrência envolve veículos
+  /* Se for ocorrência com Veículos */
   if(t.quantidadeVeiculos){
-    let total = 0;
-    Object.values(state.subtipoCounts).forEach(v => total += (v || 0));
-    state.quantidadeVeiculos = total;
-
-    // Substitui o botão "-00+" por "00, veículos escolhidos"
-    const yellowBox = el("div","counter-display-box");
-    const countFormatted = String(total).padStart(2,"0");
-    const countText = `${countFormatted}, veículos escolhidos`;
+    const yellowBox = el("div","vehicle-summary-box");
     
-    const labelBox = el("div","counter-display-text", countText);
-    yellowBox.appendChild(labelBox);
+    const countPad = String(state.veiculosSelecionados.length).padStart(2, "0");
+    const listStr = state.veiculosSelecionados.join(" x ");
+    const textContent = state.veiculosSelecionados.length > 0 
+      ? `${countPad}, ${listStr}` 
+      : "00, Nenhum veículo selecionado";
 
-    // Botão auxiliar para zerar a seleção de veículos caso o usuário erre a contagem
-    if(total > 0){
-      const btnClear = el("button","btn-clear-count","Zerar veículos");
+    const textEl = el("div", "vehicle-summary-text", textContent);
+    yellowBox.appendChild(textEl);
+
+    if (state.veiculosSelecionados.length > 0) {
+      const btnClear = el("button", "btn-clear-vehicles", "Limpar");
       btnClear.type = "button";
-      btnClear.onclick = (e) => {
-        e.stopPropagation();
-        state.subtipoCounts = {};
-        state.subtipoIds = [];
-        state.quantidadeVeiculos = 0;
+      btnClear.onclick = () => {
+        state.veiculosSelecionados = [];
         render();
       };
       yellowBox.appendChild(btnClear);
@@ -334,80 +357,60 @@ function renderSubtipoScreen(){
     c.appendChild(yellowBox);
   }
 
-  // Lista de Subtipos
   const list = el("div","grid-2-list");
   t.subtipos.forEach(s=>{
-    let count = state.subtipoCounts[s.id] || 0;
-    let selected = t.quantidadeVeiculos ? count > 0 : state.subtipoIds.includes(s.id);
-    
-    const btn = el("button","opt-row"+(selected?" selected":""));
-    btn.type="button";
-
-    const labelSpan = el("span","btn-label-clean", s.nome);
-    btn.appendChild(labelSpan);
-
-    // Exibe contagem individual no botão quando for veículo
-    if(t.quantidadeVeiculos && count > 0){
-      const badge = el("span","badge-count", `${count}`);
-      btn.appendChild(badge);
-    }
-
-    btn.onclick = ()=>{
-      if(t.quantidadeVeiculos){
-        // Clique incrementa +1 veículo
-        state.subtipoCounts[s.id] = (state.subtipoCounts[s.id] || 0) + 1;
-        if(!state.subtipoIds.includes(s.id)){
-          state.subtipoIds.push(s.id);
-        }
-      } else {
-        const i = state.subtipoIds.indexOf(s.id);
-        if(i>=0) state.subtipoIds.splice(i,1); else state.subtipoIds.push(s.id);
+    if(t.quantidadeVeiculos){
+      const count = state.veiculosSelecionados.filter(item => item === s.nome).length;
+      const btn = el("button","opt-row"+(count > 0 ? " selected" : ""));
+      btn.type = "button";
+      btn.appendChild(el("span","btn-label-clean", s.nome));
+      if(count > 0){
+        btn.appendChild(el("span","count-badge", `+${count}`));
       }
-      render(); 
-    };
-    list.appendChild(btn);
+      btn.onclick = ()=>{
+        state.veiculosSelecionados.push(s.nome);
+        render();
+      };
+      list.appendChild(btn);
+    } else {
+      const selected = state.subtipoIds.includes(s.id);
+      const btn = el("button","opt-row"+(selected?" selected":""));
+      btn.type = "button";
+      btn.appendChild(el("span","btn-label-clean", s.nome));
+      btn.onclick = ()=>{ toggleSubtipo(s.id); render(); };
+      list.appendChild(btn);
+    }
   });
   c.appendChild(list);
 
-  // Caixa de texto "Outros" na Tela de Subtipo
-  const outrosBox = el("div","subpanel mt-2");
-  outrosBox.appendChild(el("div","field-label","Outros"));
-  const inputOutros = el("input","text-input");
+  /* Caixa de texto Outros */
+  const fieldOutros = el("div", "field-outros");
+  fieldOutros.appendChild(el("div", "field-label", "Outros (descreva caso não esteja na lista)"));
+  const inputOutros = el("input", "input-outros");
   inputOutros.type = "text";
-  inputOutros.placeholder = "Caso a opção desejada não esteja na lista, digite aqui...";
+  inputOutros.placeholder = "Digite outra opção de subtipo...";
   inputOutros.value = state.subtipoOutros || "";
-  inputOutros.oninput = (e)=>{ 
+  inputOutros.oninput = (e) => {
     state.subtipoOutros = e.target.value;
   };
-  outrosBox.appendChild(inputOutros);
-  c.appendChild(outrosBox);
+  fieldOutros.appendChild(inputOutros);
+  c.appendChild(fieldOutros);
 
   if(algumSubtipoResidencial()){
     c.appendChild(renderResidencialDetalhes());
   }
 
-  // Botões de Navegação: "Voltar" e "Avançar" na MESMA LINHA
-  const navActions = el("div","nav-actions-row");
-  
-  // Botão Voltar: Azul com texto branco
-  const btnBack = el("button","btn-action btn-blue flex-1","Voltar");
-  btnBack.type="button";
-  btnBack.onclick = ()=>{ state.screen=1; render(); window.scrollTo(0,0); };
+  const isNextDisabled = t.quantidadeVeiculos
+    ? (state.veiculosSelecionados.length === 0 && (!state.subtipoOutros || state.subtipoOutros.trim() === ""))
+    : (state.subtipoIds.length === 0 && (!state.subtipoOutros || state.subtipoOutros.trim() === ""));
 
-  // Botão Avançar: Vermelho com texto branco
-  const next = el("button","btn-action btn-red flex-1","Avançar");
-  next.type="button";
-  
-  const hasSelection = state.subtipoIds.length > 0 || state.subtipoOutros.trim() !== "";
-  if(!hasSelection){
-    next.disabled = true;
-    next.classList.add("disabled");
-  }
-
-  next.onclick = ()=>{ state.screen=3; render(); window.scrollTo(0,0); };
-
-  navActions.append(btnBack, next);
-  c.appendChild(navActions);
+  const nav = renderNavButtons(
+    () => { state.screen = 1; render(); window.scrollTo(0, 0); },
+    () => { state.screen = 3; render(); window.scrollTo(0, 0); },
+    "Avançar",
+    isNextDisabled
+  );
+  c.appendChild(nav);
 
   return c;
 }
@@ -474,38 +477,38 @@ function counterField(label, value, onChange){
 function renderPerguntasScreen(){
   const t = tipoAtual();
   const c = el("div","screen");
-  
   c.appendChild(el("h1","screen-title","Detalhes da Ocorrência"));
   
-  let subNomes = subtiposSelecionados().map(s=>s.nome);
-  if(state.subtipoOutros.trim()) subNomes.push(state.subtipoOutros.trim());
-  c.appendChild(el("p","screen-sub", t.nome + " — " + subNomes.join(", ")));
+  let subtipoText = "";
+  if(t.quantidadeVeiculos){
+    let items = [...state.veiculosSelecionados];
+    if(state.subtipoOutros && state.subtipoOutros.trim() !== "") items.push(state.subtipoOutros.trim());
+    subtipoText = items.join(" x ");
+  } else {
+    subtipoText = subtiposSelecionados().map(s=>s.nome).join(", ");
+    if(state.subtipoOutros && state.subtipoOutros.trim() !== ""){
+      subtipoText += (subtipoText ? " / " : "") + state.subtipoOutros.trim();
+    }
+  }
+
+  c.appendChild(el("p","screen-sub", t.nome + (subtipoText ? " — " + subtipoText : "")));
 
   t.perguntas.forEach(p=>{
     c.appendChild(renderPergunta(p));
   });
 
-  // Botões de Navegação: "Voltar" e "Avançar" na MESMA LINHA
-  const navActions = el("div","nav-actions-row");
-  
-  // Botão Voltar: Azul com texto branco
-  const btnBack = el("button","btn-action btn-blue flex-1","Voltar");
-  btnBack.type="button";
-  btnBack.onclick = ()=>{ state.screen=2; render(); window.scrollTo(0,0); };
-
-  // Botão Avançar / Gerar Informe: Vermelho com texto branco
-  const next = el("button","btn-action btn-red flex-1","Avançar");
-  next.type="button";
-  next.onclick = ()=>{ 
-    state.geradoEm = new Date(); 
-    if(!state.coordenadas) capturarLocalizacaoAutomatica();
-    state.screen=4; 
-    render(); 
-    window.scrollTo(0,0); 
-  };
-
-  navActions.append(btnBack, next);
-  c.appendChild(navActions);
+  const nav = renderNavButtons(
+    () => { state.screen = 2; render(); window.scrollTo(0, 0); },
+    () => { 
+      state.geradoEm = new Date(); 
+      if(!state.coordenadas) capturarLocalizacaoAutomatica();
+      state.screen = 4; 
+      render(); 
+      window.scrollTo(0,0); 
+    },
+    "GERAR INFORME OPERACIONAL"
+  );
+  c.appendChild(nav);
 
   return c;
 }
@@ -685,7 +688,7 @@ function renderTextoBlock(p, box){
   return box;
 }
 
-/* ---------- Geração do Informe Operacional ---------- */
+/* ---------- Geração do Informe ---------- */
 
 const SEPARADOR = "--------------------------------";
 
@@ -708,37 +711,22 @@ function gerarTextoInforme(){
   const loc = [];
   loc.push("TIPO: " + t.nome.toUpperCase());
 
-  // Formatação do SUBTIPO
-  let listaSubtiposFormatada = [];
   if(t.quantidadeVeiculos){
-    // Cada clique adiciona o veículo na contagem
-    subs.forEach(s => {
-      let qtd = state.subtipoCounts[s.id] || 1;
-      for(let i=0; i<qtd; i++) {
-        listaSubtiposFormatada.push(s.nome);
-      }
-    });
-    if(state.subtipoOutros.trim()){
-      listaSubtiposFormatada.push(state.subtipoOutros.trim());
+    let lista = [...state.veiculosSelecionados];
+    if(state.subtipoOutros && state.subtipoOutros.trim() !== ""){
+      lista.push(state.subtipoOutros.trim());
+    }
+    if(lista.length > 0){
+      loc.push("SUBTIPO: " + lista.join(" x "));
     }
   } else {
-    listaSubtiposFormatada = subs.map(s => s.nome);
-    if(state.subtipoOutros.trim()){
-      listaSubtiposFormatada.push(state.subtipoOutros.trim());
+    let listaSubtipos = subs.map(s => s.nome);
+    if(state.subtipoOutros && state.subtipoOutros.trim() !== ""){
+      listaSubtipos.push(state.subtipoOutros.trim());
     }
-  }
-
-  if(listaSubtiposFormatada.length){
-    if(t.quantidadeVeiculos){
-      // Formato exigido para Veículos: Veículo x Veículo
-      loc.push("SUBTIPO: " + listaSubtiposFormatada.join(" x "));
-    } else {
-      loc.push("SUBTIPO: " + listaSubtiposFormatada.join(", "));
+    if(listaSubtipos.length > 0){
+      loc.push("SUBTIPO: " + listaSubtipos.join(", "));
     }
-  }
-
-  if(t.quantidadeVeiculos && state.quantidadeVeiculos>0){
-    loc.push("Quantidade de veículos: " + state.quantidadeVeiculos);
   }
 
   if(subs.some(s=>s.residencial)){
@@ -777,17 +765,13 @@ function gerarTextoInforme(){
         .map(x=>x.nome + ": " + x.valores.join(", "));
       if(partes.length) {
         if(sit.length) sit.push(SEPARADOR);
-        sit.push("INFORMAÇÕES ADICIONAIS:
-" + partes.join("
-"));
+        sit.push("INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n"));
       }
     } else if(p.type==="contadores" && r.counts){
       const entries = Object.entries(r.counts).filter(([k,v])=>v>0);
       if(entries.length) {
         if(sit.length) sit.push(SEPARADOR);
-        sit.push("FERRAMENTAS:
-" + entries.map(([k,v])=> k + " (" + v + ")").join("
-"));
+        sit.push("FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n"));
       }
     }
   });
@@ -833,10 +817,7 @@ function gerarTextoInforme(){
   blocos.push(obs);
 
   const naoVazios = blocos.filter(b=>b.length>0);
-  return naoVazios.map(b=>b.join("
-")).join("
-"+SEPARADOR+"
-");
+  return naoVazios.map(b=>b.join("\n")).join("\n"+SEPARADOR+"\n");
 }
 
 /* ---------- Tela 4: Informe ---------- */
@@ -895,6 +876,13 @@ function renderInformeScreen(){
 
   actions.append(btnWpp, btnCopy, btnReset);
   c.appendChild(actions);
+
+  const nav = renderNavButtons(
+    () => { state.screen = 3; render(); window.scrollTo(0, 0); },
+    null
+  );
+  c.appendChild(nav);
+
   return c;
 }
 
