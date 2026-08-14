@@ -18,7 +18,7 @@ const MATERIAL_EDIFICACOES = {
 const SITUACAO_INCENDIO = { key:"situacao", label:"Situação Encontrada", type:"checkbox",
   options:["Pequeno Incêndio","Médio Incêndio","Grande Incêndio","Propagando","Generalizado","Controlado","Extinto","Rescaldo"] };
 
-const DANOS = { key:"danos", label:"Existe bloqueioda via", type:"checkbox", options:["Parcial","Total"] };
+const DANOS = { key:"danos", label:"Existe bloqueioda via", type:"checkbox", options:["Não","Parcial","Total"] };
 
 const VITIMAS = { key:"vitimas", type:"vitimas" };
 
