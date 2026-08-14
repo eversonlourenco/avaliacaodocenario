@@ -178,14 +178,23 @@ function resetForm(){
 /* ---------- Coleta Automática de Geolocalização ---------- */
 
 function capturarLocalizacaoAutomatica() {
-  if (!("geolocation" in navigator)) return;
+  if (!("geolocation" in navigator)) {
+    state.geoStatus = "erro";
+    state.geoMensagem = "Seu navegador não suporta geolocalização.";
+    refreshTicketPre();
+    return;
+  }
+
   state.buscandoGeo = true;
+  state.geoStatus = "buscando";
+  render();
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
       const lat = pos.coords.latitude.toFixed(6);
       const lon = pos.coords.longitude.toFixed(6);
       state.coordenadas = `${lat}, ${lon}`;
+      state.geoStatus = "sucesso";
 
       try {
         const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
@@ -208,18 +217,22 @@ function capturarLocalizacaoAutomatica() {
       } catch(e) {
       } finally {
         state.buscandoGeo = false;
-        refreshTicketPre();
+        render();
       }
     },
     (err) => {
       state.buscandoGeo = false;
-      refreshTicketPre();
+      state.geoStatus = "erro";
+      if (err.code === err.PERMISSION_DENIED) {
+        state.geoMensagem = "Permissão de localização negada. Ative o GPS nas configurações do dispositivo/navegador.";
+      } else {
+        state.geoMensagem = "Não foi possível obter a localização. Por favor, ative o GPS e tente novamente.";
+      }
+      render();
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
   );
 }
-
-capturarLocalizacaoAutomatica();
 
 /* ---------- Helpers ---------- */
 
@@ -879,6 +892,26 @@ function renderInformeScreen(){
   const c = el("div","screen");
   c.appendChild(el("h1","screen-title","Informe Operacional"));
 
+  /* Alerta solicitando para ligar a localização se não houver coordenadas */
+  if(!state.coordenadas) {
+    const alertBox = el("div", "geo-alert-box");
+    
+    const title = el("div", "geo-alert-title", "📍 Localização não capturada");
+    const desc = el("div", "geo-alert-desc", 
+      state.geoMensagem || "Por favor, ligue a Localização (GPS) do seu aparelho e permita o acesso ao navegador para incluir endereço e coordenadas no informe."
+    );
+    
+    const btnRetry = el("button", "btn-geo", state.buscandoGeo ? "Buscando localização..." : "Ligar/Tentar Obter Localização");
+    btnRetry.type = "button";
+    btnRetry.disabled = state.buscandoGeo;
+    btnRetry.onclick = () => {
+      capturarLocalizacaoAutomatica();
+    };
+
+    alertBox.append(title, desc, btnRetry);
+    c.appendChild(alertBox);
+  }
+
   const ticket = el("div","ticket");
   const pre = el("pre","ticket-text");
   pre.textContent = gerarTextoInforme();
@@ -932,7 +965,6 @@ function renderInformeScreen(){
 
   return c;
 }
-
 /* ---------- Inicialização ---------- */
 
 render();
