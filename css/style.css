@@ -1,0 +1,51 @@
+/* Layout lado a lado para botões Voltar / Avançar */
+.nav-actions-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+/* Estilos de cores específicas dos botões de ação */
+.btn-blue {
+  background-color: var(--blue) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.btn-red {
+  background-color: var(--red) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.btn-action.disabled {
+  background-color: #2f1c1c !important;
+  color: #6b4747 !important;
+  cursor: not-allowed !important;
+}
+
+/* Texto do resumo amarelado de veículos */
+.vehicles-summary-text {
+  color: #121212;
+  font-weight: 900;
+  font-size: 16px;
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* Badge do contador individual no botão */
+.badge-count {
+  background: var(--amber);
+  color: #121212;
+  font-weight: 900;
+  font-size: 13px;
+  border-radius: 12px;
+  padding: 2px 8px;
+  margin-left: 8px;
+  display: inline-block;
+}
