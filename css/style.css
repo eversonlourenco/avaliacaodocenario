@@ -193,14 +193,20 @@ body{
   color:#ffffff;
 }
 
-/* Caixa Outros */
+/* Caixa Outros com botão OK */
 .field-outros {
   margin-top: 14px;
   margin-bottom: 14px;
 }
 
-.input-outros {
+.outros-row {
+  display: flex;
+  gap: 8px;
   width: 100%;
+}
+
+.input-outros {
+  flex: 1;
   background: var(--bg-panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -214,6 +220,22 @@ body{
 
 .input-outros:focus {
   border-color: var(--amber);
+}
+
+.btn-ok {
+  background-color: var(--blue);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0 20px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-ok:active {
+  opacity: 0.85;
 }
 
 /* Grid de seleção (Tela 3) */
