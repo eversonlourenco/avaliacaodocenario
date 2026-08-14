@@ -806,17 +806,17 @@ function gerarTextoInforme(){
     if(p.type==="checkbox" && p.key==="situacao" && r.opts && r.opts.length){
       sit.push("SITUAÇÃO ENCONTRADA: " + r.opts.join(", "));
     } else if(p.type==="checkbox" && p.key==="danos" && r.opts && r.opts.length){
-      sit.push("BLOQUEIODA VIA: " + r.opts.join(", "));
+      sit.push("BLOQUEIO DA VIA: " + r.opts.join(", "));
     } else if(p.type==="material" && r.classes){
       const partes = Object.entries(r.classes)
         .filter(([k,itens])=>itens.length>0)
         .map(([k,itens])=>k+" — "+itens.join(", "));
       if(partes.length) sit.push("MATERIAL QUEIMANDO: " + partes.join(" | "));
     } else if(p.type==="checkbox" && p.key==="bloqueio" && r.opts && r.opts.length){
-      sit.push("QUAL SENTIDO: " + r.opts.join(", "));
+      sit.push("SENTIDO: " + r.opts.join(", "));
     } else if(p.type==="checkboxComTexto" && p.key==="materialTransportado" && ((r.opts&&r.opts.length)||r.texto)){
       let linha = "MATERIAL TRANSPORTADO: " + (r.opts&&r.opts.length? r.opts.join(", ") : "");
-      if(r.texto && r.texto.trim()) linha += " (Qual: " + r.texto.trim() + ")";
+      if(r.texto && r.texto.trim()) linha += " (" + r.texto.trim() + ")";
       sit.push(linha.trim());
     } else if(p.type==="grupos"){
       const partes = p.grupos
