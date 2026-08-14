@@ -31,7 +31,7 @@ const RECURSOS = { key:"recursos", type:"recursos", viaturaOptions:["ABSL","ABS"
 const OBSERVACOES = { key:"observacoes", label:"Observações", type:"texto" };
 
 function perguntasPadrao(materialBlock, extras) {
-  const base = [SITUACAO_INCENDIO, DANOS];
+  const base = [SITUACAO_INCENDIO];
   if (materialBlock) base.push({ key:"material", type:"material", ...materialBlock });
   if (extras) base.push(...extras);
   base.push(VITIMAS, SITUACAO_VITIMAS, RECURSOS, OBSERVACOES);
@@ -99,7 +99,7 @@ const CATEGORIAS_OCORRENCIAS = [
         id:"vegetacao", nome:"Fogo em Vegetação", missao:"INCÊNDIO",
         quantidadeVeiculos:false,
         subtipos:["Beira de Via/Rodovia","Mata Rural","Mata Urbana","Montanha/Floresta","Morro/Encosta","Terreno Baldio"].map(n=>({id:n,nome:n})),
-        perguntas:[SITUACAO_VEGETACAO, DANOS, INFO_VEGETACAO, FERRAMENTAS_VEGETACAO, VITIMAS, SITUACAO_VITIMAS, RECURSOS, OBSERVACOES]
+        perguntas:[SITUACAO_VEGETACAO, INFO_VEGETACAO, FERRAMENTAS_VEGETACAO, VITIMAS, SITUACAO_VITIMAS, RECURSOS, OBSERVACOES]
       },
       {
         id:"fogo_veiculo", nome:"Fogo em Veículo", missao:"INCÊNDIO",
