@@ -223,7 +223,7 @@ body{
 }
 
 .btn-ok {
-  background-color: var(--green);
+  background-color: var(--blue);
   color: #ffffff;
   border: none;
   border-radius: var(--radius);
