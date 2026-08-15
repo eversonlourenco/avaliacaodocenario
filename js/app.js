@@ -37,17 +37,17 @@ function perguntasPadrao(materialBlock, extras) {
 }
 
 const BLOQUEIO_VIA = { key:"bloqueio", label:"Existe Bloqueio da Via", type:"checkbox",
-  options:["Não","Parcial","Total","Vazamento de carga"] };
+  options:["Não","Parcial","Total"] };
 
 const SENTIDO_VIA = { key:"sentido", label:"Sentido", type:"checkbox",
-  options:["Sentido Rio de Janeiro","Sentido Juiz de Fora","Sentido Três Rios","Sentido Paraíba do Sul","Sentido Levi Gasparian","Sentido Volta Redonda","Sentido Sapucaia"] };
+  options:["Rio de Janeiro","Juiz de Fora","Três Rios","Paraíba do Sul","Levi Gasparian","Volta Redonda","Sapucaia"] };
 
 // Removido o tipo "checkboxComTexto" e a propriedade "textoLabel", passando para "checkbox" simples
 const MATERIAL_TRANSPORTADO = { key:"materialTransportado", label:"Tipo de Material Transportado", type:"checkbox",
   options:["Carga Comum","Inflamável","Química","Explosiva"] };
 
 const SITUACAO_ACIDENTE = { key:"situacao", label:"Situação Encontrada", type:"checkbox",
-  options:["Vítima dentro do veículo","Vítima já fora do veículo","Vítima presa às ferragens","Vítima ejetada","Múltiplas vítimas","Veículo com GNV","Veículo Híbrido","Veículo 100% Elétrico","Carga Perigosa"] };
+  options:["Vítima dentro do veículo","Vítima já fora do veículo","Vítima presa às ferragens","Vítima ejetada","Múltiplas vítimas","Veículo com GNV","Veículo Híbrido","Veículo 100% Elétrico","Carga Perigosa","Vazamento de carga"] };
 
 function perguntasAcidenteVeicular() {
   return [SITUACAO_ACIDENTE, BLOQUEIO_VIA, SENTIDO_VIA, MATERIAL_TRANSPORTADO, VITIMAS, SITUACAO_VITIMAS, RECURSOS, OBSERVACOES];
@@ -60,7 +60,7 @@ const INFO_VEGETACAO = { key:"infoVegetacao", label:"Informações Adicionais", 
     { nome:"Propriedade", options:["Pública","Privada","Não identificada"] },
     { nome:"Zoneamento", options:["Urbano","Rural","Unidade de Conservação"] },
     { nome:"Tipo de Vegetação", options:["Rasteiro","Pasto","Arbusto","Árvore"] },
-    { nome:"Tipo de Terreno", options:["Plano","Encosta","Aclive","Declive","Montanhoso","Irregular"] },
+    { nome:"Tipo de Terreno", options:["Plano","Encosta","Aclive","Declive","Morro","Montanhoso","Irregular"] },
     { nome:"Condições do Vento", options:["Calmo","Moderado","Forte"] },
     { nome:"Apoio de Órgãos Externos", options:["Guarda Municipal","Defesa Civil Municipal","Brigadistas","Voluntários"] },
   ]};
@@ -848,14 +848,14 @@ function gerarTextoInforme(){
       // Se há opção selecionada (linhaMsg não vazia)
       if(linhaMsg) {
         if(temObs) {
-          linhaMsg += " | Observação: " + r.observacao.trim();
+          linhaMsg += " | " + r.observacao.trim();
         }
         sit.push(linhaMsg);
       } 
       // Se NÃO há opção selecionada, mas o usuário preencheu a observação
       else if (temObs) {
         let fallbackLabel = p.label ? p.label.toUpperCase() : p.key.toUpperCase();
-        sit.push(fallbackLabel + ": Observação: " + r.observacao.trim());
+        sit.push(fallbackLabel + ": " + r.observacao.trim());
       }
     }
   });
@@ -866,7 +866,7 @@ function gerarTextoInforme(){
   if(rv){
     let temObs = rv.observacao && rv.observacao.trim();
     if(rv.sem){
-      vit.push("VÍTIMAS: Sem vítimas" + (temObs ? " | Observação: " + rv.observacao.trim() : ""));
+      vit.push("VÍTIMAS: Sem vítimas" + (temObs ? " | " + rv.observacao.trim() : ""));
     } else {
       const partes = [];
       if(rv.total>0) partes.push(String(rv.total));
@@ -879,8 +879,8 @@ function gerarTextoInforme(){
       if(partes.length) linhaVit = "VÍTIMAS: " + partes.join(" | ");
       
       if(temObs){
-         if(linhaVit) linhaVit += " | Observação: " + rv.observacao.trim();
-         else linhaVit = "VÍTIMAS: Observação: " + rv.observacao.trim();
+         if(linhaVit) linhaVit += " | " + rv.observacao.trim();
+         else linhaVit = "VÍTIMAS: " + rv.observacao.trim();
       }
       if(linhaVit) vit.push(linhaVit);
     }
@@ -897,8 +897,8 @@ function gerarTextoInforme(){
   }
   
   if(temObsSvt) {
-     if(linhaSvt) linhaSvt += " | Observação: " + rsv.observacao.trim();
-     else linhaSvt = "SITUAÇÃO DAS VÍTIMAS: Observação: " + rsv.observacao.trim();
+     if(linhaSvt) linhaSvt += " | " + rsv.observacao.trim();
+     else linhaSvt = "SITUAÇÃO DAS VÍTIMAS: " + rsv.observacao.trim();
   }
   if(linhaSvt) vit.push(linhaSvt);
   blocos.push(vit);
@@ -916,8 +916,8 @@ function gerarTextoInforme(){
     
     let temObsRec = rr.observacao && rr.observacao.trim();
     if(temObsRec){
-       if(linhaRec) linhaRec += " | Observação: " + rr.observacao.trim();
-       else linhaRec = "RECURSOS: Observação: " + rr.observacao.trim();
+       if(linhaRec) linhaRec += " | " + rr.observacao.trim();
+       else linhaRec = "RECURSOS: " + rr.observacao.trim();
     }
     if(linhaRec) rec.push(linhaRec);
   }
