@@ -42,8 +42,9 @@ const BLOQUEIO_VIA = { key:"bloqueio", label:"Existe Bloqueio da Via", type:"che
 const SENTIDO_VIA = { key:"sentido", label:"Sentido", type:"checkbox",
   options:["Sentido Rio de Janeiro","Sentido Juiz de Fora","Sentido Três Rios","Sentido Paraíba do Sul","Sentido Levi Gasparian","Sentido Volta Redonda","Sentido Sapucaia"] };
 
-const MATERIAL_TRANSPORTADO = { key:"materialTransportado", label:"Tipo de Material Transportado", type:"checkboxComTexto",
-  options:["Carga Comum","Inflamável","Química","Explosiva"], textoLabel:"Qual" };
+// Removido o tipo "checkboxComTexto" e a propriedade "textoLabel", passando para "checkbox" simples
+const MATERIAL_TRANSPORTADO = { key:"materialTransportado", label:"Tipo de Material Transportado", type:"checkbox",
+  options:["Carga Comum","Inflamável","Química","Explosiva"] };
 
 const SITUACAO_ACIDENTE = { key:"situacao", label:"Situação Encontrada", type:"checkbox",
   options:["Vítima dentro do veículo","Vítima já fora do veículo","Vítima presa às ferragens","Vítima ejetada","Múltiplas vítimas","Veículo com GNV","Veículo Híbrido","Veículo 100% Elétrico","Carga Perigosa"] };
@@ -125,7 +126,6 @@ const CATEGORIAS_OCORRENCIAS = [
   }
 ];
 
-/* Ordenação A-Z dos Subtipos internos de cada Tipo */
 CATEGORIAS_OCORRENCIAS.forEach(cat => {
   cat.tipos.forEach(t => {
     t.subtipos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -254,7 +254,7 @@ function isChecked(key, opt){
   return !!(r && r.opts && r.opts.includes(opt));
 }
 
-/* ---------- Componente de Navegação na mesma linha ---------- */
+/* ---------- Componente de Navegação ---------- */
 
 function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = false) {
   const container = el("div", "nav-buttons");
@@ -342,7 +342,6 @@ function renderSubtipoScreen(){
   c.appendChild(el("h1","screen-title", t.nome));
   c.appendChild(el("p","screen-sub", t.quantidadeVeiculos ? "Clique nos veículos para adicionar (cada clique conta +1)" : "Podendo ser escolhido mais de um subtipo"));
 
-  /* Se for ocorrência com Veículos */
   if(t.quantidadeVeiculos){
     const yellowBox = el("div","vehicle-summary-box");
     
@@ -578,14 +577,27 @@ function renderPerguntasScreen(){
 
 function renderPergunta(p){
   const box = el("div","subpanel");
-  if(p.type==="checkbox") return renderCheckboxBlock(p, box);
-  if(p.type==="checkboxComTexto") return renderCheckboxComTexto(p, box);
-  if(p.type==="material") return renderMaterialBlock(p, box);
-  if(p.type==="grupos") return renderGruposBlock(p, box);
-  if(p.type==="contadores") return renderContadoresBlock(p, box);
-  if(p.type==="vitimas") return renderVitimasBlock(box);
-  if(p.type==="recursos") return renderRecursosBlock(p, box);
-  if(p.type==="texto") return renderTextoBlock(p, box);
+  
+  if(p.type==="checkbox") renderCheckboxBlock(p, box);
+  else if(p.type==="material") renderMaterialBlock(p, box);
+  else if(p.type==="grupos") renderGruposBlock(p, box);
+  else if(p.type==="contadores") renderContadoresBlock(p, box);
+  else if(p.type==="vitimas") renderVitimasBlock(box);
+  else if(p.type==="recursos") renderRecursosBlock(p, box);
+  else if(p.type==="texto") renderTextoBlock(p, box);
+
+  /* Campo de texto de observação abaixo de cada bloco de perguntas */
+  if (p.type !== "texto") {
+    const key = p.key || (p.type === "vitimas" ? "vitimas" : p.type === "recursos" ? "recursos" : "bloco");
+    const r = getResp(key);
+    const inputBlockText = el("input", "text-input mt-2");
+    inputBlockText.type = "text";
+    inputBlockText.placeholder = "Observação / Detalhes deste bloco...";
+    inputBlockText.value = r.observacao || "";
+    inputBlockText.oninput = (e) => { r.observacao = e.target.value; };
+    box.appendChild(labeledField("Observações do Bloco", inputBlockText));
+  }
+
   return box;
 }
 
@@ -623,18 +635,6 @@ function renderCheckboxBlock(p, box){
     const key = p.key+"_extra";
     box.appendChild(gridOptionsNoIcons(p.extra.options, op=>isChecked(key,op), op=>toggleCheckbox(key,op)));
   }
-  return box;
-}
-
-function renderCheckboxComTexto(p, box){
-  box.appendChild(el("h3","subpanel-title", p.label));
-  box.appendChild(gridOptionsNoIcons(p.options, op=>isChecked(p.key,op), op=>toggleCheckbox(p.key,op)));
-  const r = getResp(p.key);
-  const input = el("input","text-input mt-2");
-  input.type="text"; input.placeholder = p.textoLabel + "...";
-  input.value = r.texto || "";
-  input.oninput = (e)=>{ r.texto = e.target.value; };
-  box.appendChild(labeledField(p.textoLabel, input));
   return box;
 }
 
@@ -726,14 +726,25 @@ function renderVitimasBlock(box){
 function renderRecursosBlock(p, box){
   box.appendChild(el("h3","subpanel-title","Recursos"));
   const r = getResp("recursos");
-  box.appendChild(counterField("Viaturas empregadas", r.viaturas||0, v=>{r.viaturas=v; render();}));
+  if (!r.tipos) r.tipos = [];
+
+  const qtdViaturas = r.tipos.length;
+  r.viaturas = qtdViaturas;
+
+  const infoCount = el("div", "field-label", `Viaturas Empregadas: ${qtdViaturas}`);
+  infoCount.style.fontSize = "14px";
+  infoCount.style.fontWeight = "bold";
+  infoCount.style.color = "var(--amber)";
+  infoCount.style.marginBottom = "12px";
+  box.appendChild(infoCount);
+
   box.appendChild(el("div","field-label mt","Tipo de Viatura"));
   box.appendChild(gridOptionsNoIcons(p.viaturaOptions,
-    op=>(r.tipos||[]).includes(op),
+    op=>r.tipos.includes(op),
     op=>{
-      if(!r.tipos) r.tipos=[];
       const i=r.tipos.indexOf(op);
       if(i>=0) r.tipos.splice(i,1); else r.tipos.push(op);
+      r.viaturas = r.tipos.length;
     }));
   box.appendChild(counterField("Efetivo empregado", r.efetivo||0, v=>{r.efetivo=v; render();}));
   return box;
@@ -799,35 +810,52 @@ function gerarTextoInforme(){
   t.perguntas.forEach(p=>{
     const r = state.respostas[p.key];
     if(!r) return;
+    let linhaMsg = "";
+    
     if(p.type==="checkbox" && p.key==="situacao" && r.opts && r.opts.length){
-      sit.push("SITUAÇÃO ENCONTRADA: " + r.opts.join(", "));
+      linhaMsg = "SITUAÇÃO ENCONTRADA: " + r.opts.join(", ");
     } else if(p.type==="material" && r.classes){
       const partes = Object.entries(r.classes)
         .filter(([k,itens])=>itens.length>0)
         .map(([k,itens])=>k+" — "+itens.join(", "));
-      if(partes.length) sit.push("MATERIAL QUEIMANDO: " + partes.join(" | "));
+      if(partes.length) linhaMsg = "MATERIAL QUEIMANDO: " + partes.join(" | ");
     } else if(p.type==="checkbox" && p.key==="bloqueio" && r.opts && r.opts.length){
-      sit.push("BLOQUEIO DA VIA: " + r.opts.join(", "));
+      linhaMsg = "BLOQUEIO DA VIA: " + r.opts.join(", ");
     } else if(p.type==="checkbox" && p.key==="sentido" && r.opts && r.opts.length){
-      sit.push("SENTIDO: " + r.opts.join(", "));
-    } else if(p.type==="checkboxComTexto" && p.key==="materialTransportado" && ((r.opts&&r.opts.length)||r.texto)){
-      let linha = "MATERIAL TRANSPORTADO: " + (r.opts&&r.opts.length? r.opts.join(", ") : "");
-      if(r.texto && r.texto.trim()) linha += " (Qual: " + r.texto.trim() + ")";
-      sit.push(linha.trim());
+      linhaMsg = "SENTIDO: " + r.opts.join(", ");
+    } else if(p.type==="checkbox" && p.key==="materialTransportado" && r.opts && r.opts.length){
+      linhaMsg = "MATERIAL TRANSPORTADO: " + r.opts.join(", ");
     } else if(p.type==="grupos"){
       const partes = p.grupos
         .map(g=>({nome:g.nome, valores:(r.groups && r.groups[g.nome]) || []}))
         .filter(x=>x.valores.length>0)
         .map(x=>x.nome + ": " + x.valores.join(", "));
       if(partes.length) {
-        if(sit.length) sit.push(SEPARADOR);
-        sit.push("INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n"));
+        linhaMsg = "INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n");
       }
     } else if(p.type==="contadores" && r.counts){
       const entries = Object.entries(r.counts).filter(([k,v])=>v>0);
       if(entries.length) {
-        if(sit.length) sit.push(SEPARADOR);
-        sit.push("FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n"));
+        linhaMsg = "FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n");
+      }
+    }
+
+    // Regras exclusivas para blocos gerais (vitimas e recursos são gerados separadamente abaixo)
+    const ignorarNoLoop = ["vitimas", "situacaoVitimas", "recursos", "observacoes"];
+    if (!ignorarNoLoop.includes(p.key)) {
+      const temObs = r.observacao && r.observacao.trim();
+      
+      // Se há opção selecionada (linhaMsg não vazia)
+      if(linhaMsg) {
+        if(temObs) {
+          linhaMsg += " | Observação: " + r.observacao.trim();
+        }
+        sit.push(linhaMsg);
+      } 
+      // Se NÃO há opção selecionada, mas o usuário preencheu a observação
+      else if (temObs) {
+        let fallbackLabel = p.label ? p.label.toUpperCase() : p.key.toUpperCase();
+        sit.push(fallbackLabel + ": Observação: " + r.observacao.trim());
       }
     }
   });
@@ -836,8 +864,9 @@ function gerarTextoInforme(){
   const vit = [];
   const rv = state.respostas["vitimas"];
   if(rv){
+    let temObs = rv.observacao && rv.observacao.trim();
     if(rv.sem){
-      vit.push("VÍTIMAS: Sem vítimas");
+      vit.push("VÍTIMAS: Sem vítimas" + (temObs ? " | Observação: " + rv.observacao.trim() : ""));
     } else {
       const partes = [];
       if(rv.total>0) partes.push(String(rv.total));
@@ -845,25 +874,52 @@ function gerarTextoInforme(){
       if(rv.amarelo>0) partes.push("Amarelas: "+rv.amarelo);
       if(rv.vermelho>0) partes.push("Vermelhas: "+rv.vermelho);
       if(rv.cinza>0) partes.push("Cinzas: "+rv.cinza);
-      if(partes.length) vit.push("VÍTIMAS: " + partes.join(" | "));
+      
+      let linhaVit = "";
+      if(partes.length) linhaVit = "VÍTIMAS: " + partes.join(" | ");
+      
+      if(temObs){
+         if(linhaVit) linhaVit += " | Observação: " + rv.observacao.trim();
+         else linhaVit = "VÍTIMAS: Observação: " + rv.observacao.trim();
+      }
+      if(linhaVit) vit.push(linhaVit);
     }
   }
+
   const rsv = state.respostas["situacaoVitimas"];
   const rsvExtra = state.respostas["situacaoVitimas_extra"];
+  let linhaSvt = "";
+  let temObsSvt = rsv && rsv.observacao && rsv.observacao.trim();
+
   if((rsv && rsv.opts && rsv.opts.length) || (rsvExtra && rsvExtra.opts && rsvExtra.opts.length)){
-    let linha = "SITUAÇÃO DAS VÍTIMAS: " + (rsv&&rsv.opts? rsv.opts.join(", ") : "");
-    if(rsvExtra && rsvExtra.opts && rsvExtra.opts.length) linha += " (" + rsvExtra.opts.join(", ") + ")";
-    vit.push(linha.trim());
+    linhaSvt = "SITUAÇÃO DAS VÍTIMAS: " + (rsv&&rsv.opts? rsv.opts.join(", ") : "");
+    if(rsvExtra && rsvExtra.opts && rsvExtra.opts.length) linhaSvt += " (" + rsvExtra.opts.join(", ") + ")";
   }
+  
+  if(temObsSvt) {
+     if(linhaSvt) linhaSvt += " | Observação: " + rsv.observacao.trim();
+     else linhaSvt = "SITUAÇÃO DAS VÍTIMAS: Observação: " + rsv.observacao.trim();
+  }
+  if(linhaSvt) vit.push(linhaSvt);
   blocos.push(vit);
 
   const rec = [];
   const rr = state.respostas["recursos"];
   if(rr){
     const partes = [];
-    if(rr.viaturas>0) partes.push("Vtrs: " + rr.viaturas + (rr.tipos&&rr.tipos.length? " ("+rr.tipos.join(", ")+")":""));
+    const countVtrs = (rr.tipos && rr.tipos.length) ? rr.tipos.length : (rr.viaturas || 0);
+    if(countVtrs>0) partes.push("Vtrs: " + countVtrs + (rr.tipos&&rr.tipos.length? " ("+rr.tipos.join(", ")+")":""));
     if(rr.efetivo>0) partes.push("Efetivo: " + rr.efetivo);
-    if(partes.length) rec.push("RECURSOS: " + partes.join(" | "));
+    
+    let linhaRec = "";
+    if(partes.length) linhaRec = "RECURSOS: " + partes.join(" | ");
+    
+    let temObsRec = rr.observacao && rr.observacao.trim();
+    if(temObsRec){
+       if(linhaRec) linhaRec += " | Observação: " + rr.observacao.trim();
+       else linhaRec = "RECURSOS: Observação: " + rr.observacao.trim();
+    }
+    if(linhaRec) rec.push(linhaRec);
   }
   blocos.push(rec);
 
