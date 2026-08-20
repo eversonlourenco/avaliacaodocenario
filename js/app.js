@@ -42,7 +42,6 @@ const BLOQUEIO_VIA = { key:"bloqueio", label:"Existe Bloqueio da Via", type:"che
 const SENTIDO_VIA = { key:"sentido", label:"Sentido", type:"checkbox",
   options:["Rio de Janeiro","Juiz de Fora","Três Rios","Paraíba do Sul","Levi Gasparian","Volta Redonda","Sapucaia"] };
 
-// Removido o tipo "checkboxComTexto" e a propriedade "textoLabel", passando para "checkbox" simples
 const MATERIAL_TRANSPORTADO = { key:"materialTransportado", label:"Tipo de Material Transportado", type:"checkbox",
   options:["Carga Comum","Inflamável","Química","Explosiva"] };
 
@@ -139,7 +138,7 @@ function obterTodosTipos(){
   return todos;
 }
 
-/* ---------- Estado e Salvaguarda (LocalStorage) ---------- */
+/* ---------- Estado e Salvaguarda ---------- */
 
 const state = {
   screen: 1,
@@ -153,9 +152,9 @@ const state = {
   coordenadas: "",
   geradoEm: null,
   buscandoGeo: false,
+  gpsSolicitado: false // Controla se a tela inicial de permissão já foi mostrada
 };
 
-// [NOVO] Funções de armazenamento local
 function salvarEstado() {
   localStorage.setItem('avCenaState', JSON.stringify(state));
 }
@@ -164,7 +163,6 @@ function carregarEstado() {
   const salvo = localStorage.getItem('avCenaState');
   if (salvo) {
     Object.assign(state, JSON.parse(salvo));
-    // Previne ficar travado no loading de GPS caso o app feche
     state.buscandoGeo = false; 
   }
 }
@@ -186,7 +184,7 @@ function resetForm(){
   state.residencial = { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] };
   state.respostas = {};
   state.geradoEm = null;
-  salvarEstado(); // [ATUALIZADO] Salva a limpeza
+  salvarEstado();
   render();
   window.scrollTo(0,0);
 }
@@ -197,7 +195,7 @@ function capturarLocalizacaoAutomatica() {
   if (!("geolocation" in navigator)) {
     state.geoStatus = "erro";
     state.geoMensagem = "Seu navegador não suporta geolocalização.";
-    refreshTicketPre();
+    if (state.screen === 4) refreshTicketPre();
     return;
   }
 
@@ -240,14 +238,45 @@ function capturarLocalizacaoAutomatica() {
       state.buscandoGeo = false;
       state.geoStatus = "erro";
       if (err.code === err.PERMISSION_DENIED) {
-        state.geoMensagem = "Permissão de localização negada. Ative o GPS nas configurações do dispositivo/navegador.";
+        state.geoMensagem = "Permissão de localização negada. Ative o GPS e atualize.";
       } else {
-        state.geoMensagem = "Não foi possível obter a localização. Por favor, ative o GPS e tente novamente.";
+        state.geoMensagem = "Não foi possível obter a localização. Ligue o GPS.";
       }
       render();
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
   );
+}
+
+/* ---------- Componente Visual do GPS no Início ---------- */
+
+function renderGpsOverlay() {
+  const overlay = el("div", "gps-overlay");
+  overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;";
+  
+  const box = el("div", "gps-box");
+  box.style.cssText = "background:#fff;padding:30px 24px;border-radius:12px;text-align:center;max-width:400px;width:100%;box-shadow: 0 4px 15px rgba(0,0,0,0.3);";
+  
+  const icon = el("div", "", "📍");
+  icon.style.cssText = "font-size: 45px; margin-bottom: 15px;";
+
+  const title = el("h2", "", "Localização Necessária");
+  title.style.cssText = "color:#2c3e50; font-size: 22px; margin-bottom: 10px;";
+  
+  const text = el("p", "", "Para agilizar o atendimento e obter coordenadas precisas, por favor, ligue o GPS e permita o acesso ao iniciar.");
+  text.style.cssText = "color:#555; font-size: 16px; margin-bottom: 25px; line-height: 1.5;";
+  
+  const btn = el("button", "btn-primary", "ATIVAR GPS E INICIAR");
+  btn.style.cssText = "width: 100%; padding: 16px; font-size: 16px; font-weight: bold;";
+  btn.onclick = () => {
+    state.gpsSolicitado = true;
+    capturarLocalizacaoAutomatica();
+    render(); 
+  };
+  
+  box.append(icon, title, text, btn);
+  overlay.appendChild(box);
+  return overlay;
 }
 
 /* ---------- Helpers ---------- */
@@ -269,7 +298,12 @@ function isChecked(key, opt){
   return !!(r && r.opts && r.opts.includes(opt));
 }
 
-/* ---------- Componente de Navegação ---------- */
+function el(tag, className, text){
+  const e = document.createElement(tag);
+  if(className) e.className = className;
+  if(text!==undefined) e.textContent = text;
+  return e;
+}
 
 function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = false) {
   const container = el("div", "nav-buttons");
@@ -298,6 +332,12 @@ const app = document.getElementById("app");
 
 function render(){
   app.innerHTML = "";
+  
+  // Exibe a tela obrigatória de GPS na primeira vez
+  if(!state.gpsSolicitado && !state.coordenadas) {
+     app.appendChild(renderGpsOverlay());
+  }
+
   const wrap = el("div","screen-wrap");
   if(state.screen===1) wrap.appendChild(renderTipoScreen());
   else if(state.screen===2) wrap.appendChild(renderSubtipoScreen());
@@ -305,18 +345,10 @@ function render(){
   else if(state.screen===4) wrap.appendChild(renderInformeScreen());
   app.appendChild(wrap);
   
-  // [NOVO] Aciona a salvaguarda sempre que a interface sofrer qualquer atualização ou clique
   salvarEstado();
 }
 
-function el(tag, className, text){
-  const e = document.createElement(tag);
-  if(className) e.className = className;
-  if(text!==undefined) e.textContent = text;
-  return e;
-}
-
-/* ---------- Tela 1: Tipo ---------- */
+/* ---------- Telas 1 a 3 (Permanecem Idênticas) ---------- */
 
 function renderTipoScreen(){
   const c = el("div","screen");
@@ -347,11 +379,8 @@ function renderTipoScreen(){
     });
     c.appendChild(list);
   });
-
   return c;
 }
-
-/* ---------- Tela 2: Subtipo ---------- */
 
 function renderSubtipoScreen(){
   const t = tipoAtual();
@@ -362,7 +391,6 @@ function renderSubtipoScreen(){
 
   if(t.quantidadeVeiculos){
     const yellowBox = el("div","vehicle-summary-box");
-    
     const textContent = state.veiculosSelecionados.length > 0 
       ? state.veiculosSelecionados.join(" x ") 
       : "Nenhum veículo selecionado";
@@ -373,13 +401,9 @@ function renderSubtipoScreen(){
     if (state.veiculosSelecionados.length > 0) {
       const btnClear = el("button", "btn-clear-vehicles", "Limpar");
       btnClear.type = "button";
-      btnClear.onclick = () => {
-        state.veiculosSelecionados = [];
-        render();
-      };
+      btnClear.onclick = () => { state.veiculosSelecionados = []; render(); };
       yellowBox.appendChild(btnClear);
     }
-
     c.appendChild(yellowBox);
   }
 
@@ -391,13 +415,8 @@ function renderSubtipoScreen(){
       const btn = el("button","opt-row"+(count > 0 ? " selected" : ""));
       btn.type = "button";
       btn.appendChild(el("span","btn-label-clean", s.nome));
-      if(count > 0){
-        btn.appendChild(el("span","count-badge", `+${count}`));
-      }
-      btn.onclick = ()=>{
-        state.veiculosSelecionados.push(s.nome);
-        render();
-      };
+      if(count > 0) btn.appendChild(el("span","count-badge", `+${count}`));
+      btn.onclick = ()=>{ state.veiculosSelecionados.push(s.nome); render(); };
       list.appendChild(btn);
     } else {
       const selected = state.subtipoIds.includes(s.id);
@@ -412,17 +431,13 @@ function renderSubtipoScreen(){
   if (t.quantidadeVeiculos) {
     const standardNames = t.subtipos.map(s => s.nome);
     const customVehicles = [...new Set(state.veiculosSelecionados.filter(v => !standardNames.includes(v)))];
-    
     customVehicles.forEach(customName => {
       const count = state.veiculosSelecionados.filter(item => item === customName).length;
       const btn = el("button","opt-row selected");
       btn.type = "button";
       btn.appendChild(el("span","btn-label-clean", customName));
       btn.appendChild(el("span","count-badge", `+${count}`));
-      btn.onclick = ()=>{
-        state.veiculosSelecionados.push(customName);
-        render();
-      };
+      btn.onclick = ()=>{ state.veiculosSelecionados.push(customName); render(); };
       list.appendChild(btn);
     });
   } else {
@@ -430,25 +445,18 @@ function renderSubtipoScreen(){
       const btn = el("button","opt-row selected");
       btn.type = "button";
       btn.appendChild(el("span","btn-label-clean", customName));
-      btn.onclick = ()=>{
-        state.subtiposAdicionais.splice(idx, 1);
-        render();
-      };
+      btn.onclick = ()=>{ state.subtiposAdicionais.splice(idx, 1); render(); };
       list.appendChild(btn);
     });
   }
-
   c.appendChild(list);
 
   const fieldOutros = el("div", "field-outros");
   fieldOutros.appendChild(el("div", "field-label", "Outros (digite e clique em OK para adicionar)"));
-  
   const outrosRow = el("div", "outros-row");
-  
   const inputOutros = el("input", "input-outros");
   inputOutros.type = "text";
   inputOutros.placeholder = "Digite outra opção...";
-  inputOutros.id = "input-custom-subtipo";
   
   const btnOk = el("button", "btn-ok", "OK");
   btnOk.type = "button";
@@ -456,43 +464,26 @@ function renderSubtipoScreen(){
   const adicionarCustomizado = () => {
     const val = inputOutros.value.trim();
     if (val) {
-      if (t.quantidadeVeiculos) {
-        state.veiculosSelecionados.push(val);
-      } else {
-        if (!state.subtiposAdicionais.includes(val)) {
-          state.subtiposAdicionais.push(val);
-        }
-      }
+      if (t.quantidadeVeiculos) state.veiculosSelecionados.push(val);
+      else if (!state.subtiposAdicionais.includes(val)) state.subtiposAdicionais.push(val);
       render();
     }
   };
 
   btnOk.onclick = adicionarCustomizado;
-  inputOutros.onkeypress = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      adicionarCustomizado();
-    }
-  };
-
+  inputOutros.onkeypress = (e) => { if (e.key === "Enter") { e.preventDefault(); adicionarCustomizado(); } };
   outrosRow.appendChild(inputOutros);
   outrosRow.appendChild(btnOk);
   fieldOutros.appendChild(outrosRow);
   c.appendChild(fieldOutros);
 
-  if(algumSubtipoResidencial()){
-    c.appendChild(renderResidencialDetalhes());
-  }
+  if(algumSubtipoResidencial()) c.appendChild(renderResidencialDetalhes());
 
-  const isNextDisabled = t.quantidadeVeiculos
-    ? state.veiculosSelecionados.length === 0
-    : (state.subtipoIds.length === 0 && state.subtiposAdicionais.length === 0);
-
+  const isNextDisabled = t.quantidadeVeiculos ? state.veiculosSelecionados.length === 0 : (state.subtipoIds.length === 0 && state.subtiposAdicionais.length === 0);
   const nav = renderNavButtons(
     () => { state.screen = 1; render(); window.scrollTo(0, 0); },
     () => { state.screen = 3; render(); window.scrollTo(0, 0); },
-    "Avançar",
-    isNextDisabled
+    "Avançar", isNextDisabled
   );
   c.appendChild(nav);
 
@@ -533,8 +524,6 @@ function renderResidencialDetalhes(){
   return box;
 }
 
-/* ---------- Campos ---------- */
-
 function labeledField(label, node){
   const f = el("div","field");
   f.appendChild(el("div","field-label",label));
@@ -556,8 +545,6 @@ function counterField(label, value, onChange){
   return row;
 }
 
-/* ---------- Tela 3: Perguntas ---------- */
-
 function renderPerguntasScreen(){
   const t = tipoAtual();
   const c = el("div","screen");
@@ -570,7 +557,6 @@ function renderPerguntasScreen(){
     let items = subtiposSelecionados().map(s=>s.nome).concat(state.subtiposAdicionais);
     subtipoText = items.join(", ");
   }
-
   c.appendChild(el("p","screen-sub", t.nome + (subtipoText ? " — " + subtipoText : "")));
 
   t.perguntas.forEach(p=>{
@@ -581,8 +567,6 @@ function renderPerguntasScreen(){
     () => { state.screen = 2; render(); window.scrollTo(0, 0); },
     () => { 
       state.geradoEm = new Date(); 
-      // Se não houver coordenadas e ainda não tiver buscado, tenta de novo aqui
-      if(!state.coordenadas && !state.buscandoGeo) capturarLocalizacaoAutomatica();
       state.screen = 4; 
       render(); 
       window.scrollTo(0,0); 
@@ -596,7 +580,6 @@ function renderPerguntasScreen(){
 
 function renderPergunta(p){
   const box = el("div","subpanel");
-  
   if(p.type==="checkbox") renderCheckboxBlock(p, box);
   else if(p.type==="material") renderMaterialBlock(p, box);
   else if(p.type==="grupos") renderGruposBlock(p, box);
@@ -605,7 +588,6 @@ function renderPergunta(p){
   else if(p.type==="recursos") renderRecursosBlock(p, box);
   else if(p.type==="texto") renderTextoBlock(p, box);
 
-  /* Campo de texto de observação abaixo de cada bloco de perguntas */
   if (p.type !== "texto") {
     const key = p.key || (p.type === "vitimas" ? "vitimas" : p.type === "recursos" ? "recursos" : "bloco");
     const r = getResp(key);
@@ -616,7 +598,6 @@ function renderPergunta(p){
     inputBlockText.oninput = (e) => { r.observacao = e.target.value; };
     box.appendChild(labeledField("Observações do Bloco", inputBlockText));
   }
-
   return box;
 }
 
@@ -746,7 +727,6 @@ function renderRecursosBlock(p, box){
   box.appendChild(el("h3","subpanel-title","Recursos"));
   const r = getResp("recursos");
   if (!r.tipos) r.tipos = [];
-
   const qtdViaturas = r.tipos.length;
   r.viaturas = qtdViaturas;
 
@@ -784,7 +764,6 @@ function renderTextoBlock(p, box){
 /* ---------- Geração do Informe ---------- */
 
 const SEPARADOR = "--------------------------------";
-
 function pad2(n){ return String(n).padStart(2,"0"); }
 
 function gerarTextoInforme(){
@@ -805,14 +784,10 @@ function gerarTextoInforme(){
   loc.push("TIPO: " + t.nome.toUpperCase());
 
   if(t.quantidadeVeiculos){
-    if(state.veiculosSelecionados.length > 0){
-      loc.push("SUBTIPO: " + state.veiculosSelecionados.join(" x "));
-    }
+    if(state.veiculosSelecionados.length > 0) loc.push("SUBTIPO: " + state.veiculosSelecionados.join(" x "));
   } else {
     let listaSubtipos = subs.map(s => s.nome).concat(state.subtiposAdicionais);
-    if(listaSubtipos.length > 0){
-      loc.push("SUBTIPO: " + listaSubtipos.join(", "));
-    }
+    if(listaSubtipos.length > 0) loc.push("SUBTIPO: " + listaSubtipos.join(", "));
   }
 
   if(subs.some(s=>s.residencial)){
@@ -834,9 +809,7 @@ function gerarTextoInforme(){
     if(p.type==="checkbox" && p.key==="situacao" && r.opts && r.opts.length){
       linhaMsg = "SITUAÇÃO ENCONTRADA: " + r.opts.join(", ");
     } else if(p.type==="material" && r.classes){
-      const partes = Object.entries(r.classes)
-        .filter(([k,itens])=>itens.length>0)
-        .map(([k,itens])=>k+" — "+itens.join(", "));
+      const partes = Object.entries(r.classes).filter(([k,itens])=>itens.length>0).map(([k,itens])=>k+" — "+itens.join(", "));
       if(partes.length) linhaMsg = "MATERIAL QUEIMANDO: " + partes.join(" | ");
     } else if(p.type==="checkbox" && p.key==="bloqueio" && r.opts && r.opts.length){
       linhaMsg = "BLOQUEIO DA VIA: " + r.opts.join(", ");
@@ -845,34 +818,20 @@ function gerarTextoInforme(){
     } else if(p.type==="checkbox" && p.key==="materialTransportado" && r.opts && r.opts.length){
       linhaMsg = "MATERIAL TRANSPORTADO: " + r.opts.join(", ");
     } else if(p.type==="grupos"){
-      const partes = p.grupos
-        .map(g=>({nome:g.nome, valores:(r.groups && r.groups[g.nome]) || []}))
-        .filter(x=>x.valores.length>0)
-        .map(x=>x.nome + ": " + x.valores.join(", "));
-      if(partes.length) {
-        linhaMsg = "INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n");
-      }
+      const partes = p.grupos.map(g=>({nome:g.nome, valores:(r.groups && r.groups[g.nome]) || []})).filter(x=>x.valores.length>0).map(x=>x.nome + ": " + x.valores.join(", "));
+      if(partes.length) linhaMsg = "INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n");
     } else if(p.type==="contadores" && r.counts){
       const entries = Object.entries(r.counts).filter(([k,v])=>v>0);
-      if(entries.length) {
-        linhaMsg = "FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n");
-      }
+      if(entries.length) linhaMsg = "FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n");
     }
 
-    // Regras exclusivas para blocos gerais (vitimas e recursos são gerados separadamente abaixo)
     const ignorarNoLoop = ["vitimas", "situacaoVitimas", "recursos", "observacoes"];
     if (!ignorarNoLoop.includes(p.key)) {
       const temObs = r.observacao && r.observacao.trim();
-      
-      // Se há opção selecionada (linhaMsg não vazia)
       if(linhaMsg) {
-        if(temObs) {
-          linhaMsg += " | " + r.observacao.trim();
-        }
+        if(temObs) linhaMsg += " | " + r.observacao.trim();
         sit.push(linhaMsg);
-      } 
-      // Se NÃO há opção selecionada, mas o usuário preencheu a observação
-      else if (temObs) {
+      } else if (temObs) {
         let fallbackLabel = p.label ? p.label.toUpperCase() : p.key.toUpperCase();
         sit.push(fallbackLabel + ": " + r.observacao.trim());
       }
@@ -896,7 +855,6 @@ function gerarTextoInforme(){
       
       let linhaVit = "";
       if(partes.length) linhaVit = "VÍTIMAS: " + partes.join(" | ");
-      
       if(temObs){
          if(linhaVit) linhaVit += " | " + rv.observacao.trim();
          else linhaVit = "VÍTIMAS: " + rv.observacao.trim();
@@ -951,7 +909,7 @@ function gerarTextoInforme(){
   return naoVazios.map(b=>b.join("\n")).join("\n"+SEPARADOR+"\n");
 }
 
-/* ---------- Tela 4: Informe ---------- */
+/* ---------- Tela 4: Informe Final ---------- */
 
 let ticketPreRef = null;
 
@@ -963,31 +921,28 @@ function renderInformeScreen(){
   const c = el("div","screen");
   c.appendChild(el("h1","screen-title","Informe Operacional"));
 
-  // [NOVO] Adicionar interface de anexo de foto
+  // [ATUALIZADO] Campo de Fotos Múltiplas (sem bloqueio de environment)
   const photoField = el("div", "field");
-  photoField.appendChild(el("div", "field-label", "Anexar Foto da Cena (Opcional)"));
+  photoField.appendChild(el("div", "field-label", "Anexar Fotos da Cena (Múltiplas fotos permitidas)"));
   const photoInput = el("input", "text-input");
   photoInput.type = "file";
   photoInput.accept = "image/*";
-  photoInput.capture = "environment"; // Força o uso da câmera principal em dispositivos móveis
+  photoInput.multiple = true; 
   photoInput.id = "fotoCena";
   photoField.appendChild(photoInput);
   c.appendChild(photoField);
 
   if(!state.coordenadas) {
     const alertBox = el("div", "geo-alert-box");
-    
     const title = el("div", "geo-alert-title", "📍 Localização não capturada");
     const desc = el("div", "geo-alert-desc", 
-      state.geoMensagem || "Por favor, ligue a Localização (GPS) do seu aparelho e permita o acesso ao navegador para incluir endereço e coordenadas no informe."
+      state.geoMensagem || "Não foi possível resgatar o GPS da sua posição."
     );
     
-    const btnRetry = el("button", "btn-geo", state.buscandoGeo ? "Buscando localização..." : "Ligar/Tentar Obter Localização");
+    const btnRetry = el("button", "btn-geo", state.buscandoGeo ? "Buscando localização..." : "Tentar Obter Localização Novamente");
     btnRetry.type = "button";
     btnRetry.disabled = state.buscandoGeo;
-    btnRetry.onclick = () => {
-      capturarLocalizacaoAutomatica();
-    };
+    btnRetry.onclick = () => { capturarLocalizacaoAutomatica(); };
 
     alertBox.append(title, desc, btnRetry);
     c.appendChild(alertBox);
@@ -1002,13 +957,13 @@ function renderInformeScreen(){
 
   const actions = el("div","action-grid");
 
-  // [ATUALIZADO] Botão de compartilhamento que suporta texto e imagem via Web Share API
+  // [ATUALIZADO] Compartilhamento com array de arquivos
   const btnWpp = el("button","btn-action btn-whatsapp","ENVIAR / COMPARTILHAR");
   btnWpp.type="button";
   btnWpp.onclick = async ()=>{
     const texto = gerarTextoInforme();
     const input = document.getElementById('fotoCena');
-    const filesArray = (input && input.files.length > 0) ? [input.files[0]] : [];
+    const filesArray = (input && input.files.length > 0) ? Array.from(input.files) : [];
     
     if (navigator.share) {
       try {
@@ -1016,7 +971,6 @@ function renderInformeScreen(){
           title: 'Informe Operacional',
           text: texto,
         };
-        // Se houver foto, verifica se o navegador suporta enviar arquivos via Share
         if (filesArray.length && navigator.canShare && navigator.canShare({ files: filesArray })) {
            shareData.files = filesArray;
         }
@@ -1025,7 +979,6 @@ function renderInformeScreen(){
         console.log("Compartilhamento cancelado ou falhou", e);
       }
     } else {
-       // Alternativa para navegadores que não suportam o Web Share API
        window.open("https://wa.me/?text=" + encodeURIComponent(texto), "_blank");
     }
   };
@@ -1060,8 +1013,7 @@ function renderInformeScreen(){
   c.appendChild(actions);
 
   const nav = renderNavButtons(
-    () => { state.screen = 3; render(); window.scrollTo(0, 0); },
-    null
+    () => { state.screen = 3; render(); window.scrollTo(0, 0); }, null
   );
   c.appendChild(nav);
 
@@ -1070,10 +1022,8 @@ function renderInformeScreen(){
 
 /* ---------- Inicialização ---------- */
 
-// [ATUALIZADO] Recuperar estado anterior e iniciar GPS logo na abertura do App
 carregarEstado();
-if(!state.coordenadas) capturarLocalizacaoAutomatica();
-render();
+render(); // A chamada do render agora cria um overlay se o GPS não foi solicitado.
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
