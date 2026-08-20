@@ -205,7 +205,7 @@ function resetForm(){
   window.scrollTo(0,0);
 }
 
-/* ---------- Coleta Automática de Geolocalização Obrigatória ---------- */
+/* ---------- Coleta Automática de Geolocalização de Alta Precisão ---------- */
 
 function capturarLocalizacaoAutomatica() {
   if (!("geolocation" in navigator)) {
@@ -218,7 +218,15 @@ function capturarLocalizacaoAutomatica() {
 
   state.buscandoGeo = true;
   state.geoStatus = "buscando";
+  state.geoMensagem = "Solicitando sinal de GPS de alta precisão...";
   render();
+
+  // Opções configuradas para forçar o uso máximo do GPS do dispositivo
+  const options = {
+    enableHighAccuracy: true, // Força o uso do GPS real em vez de apenas torre/Wi-Fi
+    timeout: 12000,           // Tempo limite de espera (12 segundos)
+    maximumAge: 0             // Não aceita cache antigo, exige posição atualizada
+  };
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
@@ -246,6 +254,7 @@ function capturarLocalizacaoAutomatica() {
           }
         }
       } catch(e) {
+        console.error("Erro ao buscar endereço reverso", e);
       } finally {
         state.buscandoGeo = false;
         salvarEstado();
@@ -255,15 +264,18 @@ function capturarLocalizacaoAutomatica() {
     (err) => {
       state.buscandoGeo = false;
       state.geoStatus = "erro";
+      
+      // Identifica se o erro ocorreu porque o GPS está desligado ou negado
       if (err.code === err.PERMISSION_DENIED) {
-        state.geoMensagem = "Permissão de localização negada. Ative o GPS nas configurações.";
+        state.geoMensagem = "Permissão de localização negada. Autorize o acesso no navegador.";
       } else {
-        state.geoMensagem = "Ative a Localização do Dispositivo e a Precisão de Local para continuar.";
+        state.geoMensagem = "GPS desativado ou sem sinal. Por favor, ligue a localização nas configurações do celular e toque em Ativar novamente.";
       }
+      
       salvarEstado();
       render();
     },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    options
   );
 }
 
