@@ -139,7 +139,7 @@ function obterTodosTipos(){
   return todos;
 }
 
-/* ---------- Estado ---------- */
+/* ---------- Estado e Salvaguarda (LocalStorage) ---------- */
 
 const state = {
   screen: 1,
@@ -154,6 +154,20 @@ const state = {
   geradoEm: null,
   buscandoGeo: false,
 };
+
+// [NOVO] Funções de armazenamento local
+function salvarEstado() {
+  localStorage.setItem('avCenaState', JSON.stringify(state));
+}
+
+function carregarEstado() {
+  const salvo = localStorage.getItem('avCenaState');
+  if (salvo) {
+    Object.assign(state, JSON.parse(salvo));
+    // Previne ficar travado no loading de GPS caso o app feche
+    state.buscandoGeo = false; 
+  }
+}
 
 function tipoAtual(){ return obterTodosTipos().find(t=>t.id===state.tipoId); }
 function subtiposSelecionados(){ const t=tipoAtual(); return t ? t.subtipos.filter(s=>state.subtipoIds.includes(s.id)) : []; }
@@ -172,6 +186,7 @@ function resetForm(){
   state.residencial = { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] };
   state.respostas = {};
   state.geradoEm = null;
+  salvarEstado(); // [ATUALIZADO] Salva a limpeza
   render();
   window.scrollTo(0,0);
 }
@@ -289,6 +304,9 @@ function render(){
   else if(state.screen===3) wrap.appendChild(renderPerguntasScreen());
   else if(state.screen===4) wrap.appendChild(renderInformeScreen());
   app.appendChild(wrap);
+  
+  // [NOVO] Aciona a salvaguarda sempre que a interface sofrer qualquer atualização ou clique
+  salvarEstado();
 }
 
 function el(tag, className, text){
@@ -563,7 +581,8 @@ function renderPerguntasScreen(){
     () => { state.screen = 2; render(); window.scrollTo(0, 0); },
     () => { 
       state.geradoEm = new Date(); 
-      if(!state.coordenadas) capturarLocalizacaoAutomatica();
+      // Se não houver coordenadas e ainda não tiver buscado, tenta de novo aqui
+      if(!state.coordenadas && !state.buscandoGeo) capturarLocalizacaoAutomatica();
       state.screen = 4; 
       render(); 
       window.scrollTo(0,0); 
@@ -774,11 +793,11 @@ function gerarTextoInforme(){
   const blocos = [];
 
   const cab = ["*AVALIAÇÃO DA CENA*"];
-  const agora = state.geradoEm || new Date();
+  const agora = state.geradoEm ? new Date(state.geradoEm) : new Date();
   cab.push("*DATA:* " + agora.toLocaleDateString("pt-BR"));
   cab.push("*HORA:* " + agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) + " (coleta das informações)");
-  if(state.coordenadas.trim()) cab.push("*COORDENADAS:* " + state.coordenadas.trim());
-  if(state.endereco.trim()) cab.push("*ENDEREÇO:* " + state.endereco.trim());
+  if(state.coordenadas && state.coordenadas.trim()) cab.push("*COORDENADAS:* " + state.coordenadas.trim());
+  if(state.endereco && state.endereco.trim()) cab.push("*ENDEREÇO:* " + state.endereco.trim());
   cab.push("*MISSÃO:* " + (t.missao || ""));
   blocos.push(cab);
 
@@ -944,6 +963,17 @@ function renderInformeScreen(){
   const c = el("div","screen");
   c.appendChild(el("h1","screen-title","Informe Operacional"));
 
+  // [NOVO] Adicionar interface de anexo de foto
+  const photoField = el("div", "field");
+  photoField.appendChild(el("div", "field-label", "Anexar Foto da Cena (Opcional)"));
+  const photoInput = el("input", "text-input");
+  photoInput.type = "file";
+  photoInput.accept = "image/*";
+  photoInput.capture = "environment"; // Força o uso da câmera principal em dispositivos móveis
+  photoInput.id = "fotoCena";
+  photoField.appendChild(photoInput);
+  c.appendChild(photoField);
+
   if(!state.coordenadas) {
     const alertBox = el("div", "geo-alert-box");
     
@@ -972,11 +1002,32 @@ function renderInformeScreen(){
 
   const actions = el("div","action-grid");
 
-  const btnWpp = el("button","btn-action btn-whatsapp","ENVIAR PELO WHATSAPP");
+  // [ATUALIZADO] Botão de compartilhamento que suporta texto e imagem via Web Share API
+  const btnWpp = el("button","btn-action btn-whatsapp","ENVIAR / COMPARTILHAR");
   btnWpp.type="button";
-  btnWpp.onclick = ()=>{
-    const url = "https://wa.me/?text=" + encodeURIComponent(gerarTextoInforme());
-    window.open(url, "_blank");
+  btnWpp.onclick = async ()=>{
+    const texto = gerarTextoInforme();
+    const input = document.getElementById('fotoCena');
+    const filesArray = (input && input.files.length > 0) ? [input.files[0]] : [];
+    
+    if (navigator.share) {
+      try {
+        const shareData = {
+          title: 'Informe Operacional',
+          text: texto,
+        };
+        // Se houver foto, verifica se o navegador suporta enviar arquivos via Share
+        if (filesArray.length && navigator.canShare && navigator.canShare({ files: filesArray })) {
+           shareData.files = filesArray;
+        }
+        await navigator.share(shareData);
+      } catch(e) {
+        console.log("Compartilhamento cancelado ou falhou", e);
+      }
+    } else {
+       // Alternativa para navegadores que não suportam o Web Share API
+       window.open("https://wa.me/?text=" + encodeURIComponent(texto), "_blank");
+    }
   };
 
   const btnCopy = el("button","btn-action btn-copy","COPIAR TEXTO");
@@ -1019,6 +1070,9 @@ function renderInformeScreen(){
 
 /* ---------- Inicialização ---------- */
 
+// [ATUALIZADO] Recuperar estado anterior e iniciar GPS logo na abertura do App
+carregarEstado();
+if(!state.coordenadas) capturarLocalizacaoAutomatica();
 render();
 
 if("serviceWorker" in navigator){
