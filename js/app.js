@@ -199,19 +199,20 @@ function resetForm(){
   state.geradoEm = null;
   state.coordenadas = "";
   state.endereco = "";
-  capturarLocalizacaoAutomatica();
+  state.geoStatus = "pendente";
+  state.geoMensagem = "";
   render();
   window.scrollTo(0,0);
 }
 
-/* ---------- Coleta Automática de Geolocalização Prioritária ---------- */
+/* ---------- Coleta Automática de Geolocalização Obrigatória ---------- */
 
 function capturarLocalizacaoAutomatica() {
   if (!("geolocation" in navigator)) {
     state.geoStatus = "erro";
     state.geoMensagem = "Seu navegador não suporta geolocalização.";
     salvarEstado();
-    refreshTicketPre();
+    render();
     return;
   }
 
@@ -257,7 +258,7 @@ function capturarLocalizacaoAutomatica() {
       if (err.code === err.PERMISSION_DENIED) {
         state.geoMensagem = "Permissão de localização negada. Ative o GPS nas configurações do dispositivo/navegador.";
       } else {
-        state.geoMensagem = "Não foi possível obter a localização. Por favor, ative o GPS e tente novamente.";
+        state.geoMensagem = "Não foi possível obter a localização automaticamente. Por favor, certifique-se de que o GPS está ligado.";
       }
       salvarEstado();
       render();
@@ -309,7 +310,7 @@ function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = 
   return container;
 }
 
-/* ---------- Render ---------- */
+/* ---------- Renderização Principal (Com Tela de Ação de GPS Obrigatória) ---------- */
 
 const app = document.getElementById("app");
 
@@ -318,32 +319,19 @@ function render(){
   app.innerHTML = "";
   const wrap = el("div","screen-wrap");
   
-  // Banner fixo de aviso de GPS caso não esteja capturado no início
-  if(!state.coordenadas && state.screen === 1) {
-    const topGeoAlert = el("div", "geo-alert-top");
-    topGeoAlert.style.background = "var(--amber, #f59e0b)";
-    topGeoAlert.style.color = "#000";
-    topGeoAlert.style.padding = "10px 15px";
-    topGeoAlert.style.fontSize = "13px";
-    topGeoAlert.style.fontWeight = "bold";
-    topGeoAlert.style.textAlign = "center";
-    topGeoAlert.style.marginBottom = "15px";
-    topGeoAlert.style.borderRadius = "8px";
-    
-    if(state.geoStatus === "buscando") {
-      topGeoAlert.textContent = "📍 Buscando sinal de GPS prioritário...";
-    } else {
-      topGeoAlert.textContent = "⚠️ GPS necessário ativado! Toque aqui para tentar obter localização.";
-      topGeoAlert.style.cursor = "pointer";
-      topGeoAlert.onclick = () => capturarLocalizacaoAutomatica();
-    }
-    wrap.appendChild(topGeoAlert);
+  // TELA DE AÇÃO DE GPS OBRIGATÓRIA ANTES DE INICIAR O APP
+  if(!state.coordenadas && state.geoStatus !== "sucesso") {
+    wrap.appendChild(renderGpsActionScreen());
+  } else if(state.screen===1) {
+    wrap.appendChild(renderTipoScreen());
+  } else if(state.screen===2) {
+    wrap.appendChild(renderSubtipoScreen());
+  } else if(state.screen===3) {
+    wrap.appendChild(renderPerguntasScreen());
+  } else if(state.screen===4) {
+    wrap.appendChild(renderInformeScreen());
   }
-
-  if(state.screen===1) wrap.appendChild(renderTipoScreen());
-  else if(state.screen===2) wrap.appendChild(renderSubtipoScreen());
-  else if(state.screen===3) wrap.appendChild(renderPerguntasScreen());
-  else if(state.screen===4) wrap.appendChild(renderInformeScreen());
+  
   app.appendChild(wrap);
 }
 
@@ -352,6 +340,66 @@ function el(tag, className, text){
   if(className) e.className = className;
   if(text!==undefined) e.textContent = text;
   return e;
+}
+
+/* ---------- Tela de Ação: Ativação de GPS Obrigatória ---------- */
+
+function renderGpsActionScreen(){
+  const c = el("div","screen");
+  
+  c.appendChild(el("h1","screen-title","Ativação de Localização"));
+  c.appendChild(el("p","screen-sub","Para garantir a precisão do informe operacional enviado à central, é obrigatório ativar o GPS no início da ocorrência[cite: 1]."));
+
+  const box = el("div","subpanel");
+  box.style.textAlign = "center";
+  box.style.padding = "40px 20px";
+
+  const icon = el("div","","🛰️");
+  icon.style.fontSize = "56px";
+  icon.style.marginBottom = "20px";
+  box.appendChild(icon);
+
+  const titleAlert = el("div","", state.buscandoGeo ? "Buscando sinal de GPS..." : "GPS Necessário");
+  titleAlert.style.fontSize = "18px";
+  titleAlert.style.fontWeight = "bold";
+  titleAlert.style.marginBottom = "10px";
+  box.appendChild(titleAlert);
+
+  const desc = el("div","", state.geoMensagem || "Toque no botão abaixo para permitir que o aplicativo capte suas coordenadas e endereço atual automaticamente.");
+  desc.style.fontSize = "14px";
+  desc.style.color = "var(--text-dim, #9ca3af)";
+  desc.style.marginBottom = "30px";
+  box.appendChild(desc);
+
+  const btnGps = el("button","btn-primary", state.buscandoGeo ? "Buscando satélites..." : "ATIVAR GPS AGORA");
+  btnGps.type = "button";
+  btnGps.disabled = state.buscandoGeo;
+  btnGps.style.width = "100%";
+  btnGps.style.padding = "16px";
+  btnGps.style.fontSize = "16px";
+  btnGps.style.fontWeight = "bold";
+  btnGps.onclick = () => {
+    capturarLocalizacaoAutomatica();
+  };
+  box.appendChild(btnGps);
+
+  const btnSkip = el("button","btn-blue","Prosseguir sem GPS (Não recomendado)");
+  btnSkip.type = "button";
+  btnSkip.style.width = "100%";
+  btnSkip.style.marginTop = "15px";
+  btnSkip.style.background = "transparent";
+  btnSkip.style.border = "1px solid var(--border, #374151)";
+  btnSkip.style.color = "var(--text, #fff)";
+  btnSkip.style.padding = "12px";
+  btnSkip.onclick = () => {
+    state.coordenadas = "Não informada";
+    state.geoStatus = "sucesso";
+    render();
+  };
+  box.appendChild(btnSkip);
+
+  c.appendChild(box);
+  return c;
 }
 
 /* ---------- Tela 1: Tipo ---------- */
@@ -617,7 +665,6 @@ function renderPerguntasScreen(){
     () => { state.screen = 2; render(); window.scrollTo(0, 0); },
     () => { 
       if(!state.geradoEm) state.geradoEm = new Date(); 
-      if(!state.coordenadas) capturarLocalizacaoAutomatica();
       state.screen = 4; 
       render(); 
       window.scrollTo(0,0); 
@@ -1010,24 +1057,6 @@ function renderInformeScreen(){
   const c = el("div","screen");
   c.appendChild(el("h1","screen-title","Informe Operacional"));
 
-  if(!state.coordenadas) {
-    const alertBox = el("div", "geo-alert-box");
-    const title = el("div", "geo-alert-title", "📍 Localização não capturada");
-    const desc = el("div", "geo-alert-desc", 
-      state.geoMensagem || "Por favor, ligue a Localização (GPS) do seu aparelho e permita o acesso ao navegador para incluir endereço e coordenadas no informe."
-    );
-    
-    const btnRetry = el("button", "btn-geo", state.buscandoGeo ? "Buscando localização..." : "Ligar/Tentar Obter Localização");
-    btnRetry.type = "button";
-    btnRetry.disabled = state.buscandoGeo;
-    btnRetry.onclick = () => {
-      capturarLocalizacaoAutomatica();
-    };
-
-    alertBox.append(title, desc, btnRetry);
-    c.appendChild(alertBox);
-  }
-
   const ticket = el("div","ticket");
   const pre = el("pre","ticket-text");
   pre.textContent = gerarTextoInforme();
@@ -1086,11 +1115,6 @@ function renderInformeScreen(){
 
 carregarEstado();
 render();
-
-// Tenta pegar a geolocalização logo na carga inicial da aplicação de forma prioritária
-if (!state.coordenadas) {
-  capturarLocalizacaoAutomatica();
-}
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
