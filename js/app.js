@@ -2,7 +2,7 @@
    AVALIAÇÃO DA CENA — App de Informe Operacional
    ========================================================= */
 
-/* ---------- Blocos de perguntas reutilizáveis ---------- */
+/* ---------- Blocos de perguntas reutilizáveis[cite: 1] ---------- */
 
 const MATERIAL_EDIFICACOES = {
   label: "Tipo de Material Queimando",
@@ -67,7 +67,7 @@ const INFO_VEGETACAO = { key:"infoVegetacao", label:"Informações Adicionais", 
 const FERRAMENTAS_VEGETACAO = { key:"ferramentas", label:"Ferramentas", type:"contadores",
   options:["Abafador","Bomba Costal","Enxada","Pá","McLeod","Facão"] };
 
-/* ---------- Estrutura de Tipos Agrupados ---------- */
+/* ---------- Estrutura de Tipos Agrupados[cite: 1] ---------- */
 
 const CATEGORIAS_OCORRENCIAS = [
   {
@@ -138,7 +138,9 @@ function obterTodosTipos(){
   return todos;
 }
 
-/* ---------- Estado e Salvaguarda ---------- */
+/* ---------- Estado e Salvaguarda LocalStorage ---------- */
+
+const STORAGE_KEY = "app_informe_operacional_state_v1";
 
 const state = {
   screen: 1,
@@ -152,18 +154,27 @@ const state = {
   coordenadas: "",
   geradoEm: null,
   buscandoGeo: false,
-  gpsSolicitado: false // Controla se a tela inicial de permissão já foi mostrada
+  geoStatus: "pendente",
+  geoMensagem: ""
 };
 
 function salvarEstado() {
-  localStorage.setItem('avCenaState', JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch(e) {
+    console.error("Erro ao salvar no localStorage", e);
+  }
 }
 
 function carregarEstado() {
-  const salvo = localStorage.getItem('avCenaState');
-  if (salvo) {
-    Object.assign(state, JSON.parse(salvo));
-    state.buscandoGeo = false; 
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if(saved) {
+      const parsed = JSON.parse(saved);
+      Object.assign(state, parsed);
+    }
+  } catch(e) {
+    console.error("Erro ao carregar do localStorage", e);
   }
 }
 
@@ -173,9 +184,11 @@ function algumSubtipoResidencial(){ return subtiposSelecionados().some(s=>s.resi
 function toggleSubtipo(id){
   const i = state.subtipoIds.indexOf(id);
   if(i>=0) state.subtipoIds.splice(i,1); else state.subtipoIds.push(id);
+  salvarEstado();
 }
 
 function resetForm(){
+  localStorage.removeItem(STORAGE_KEY);
   state.screen = 1;
   state.tipoId = null;
   state.subtipoIds = [];
@@ -184,18 +197,21 @@ function resetForm(){
   state.residencial = { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] };
   state.respostas = {};
   state.geradoEm = null;
-  salvarEstado();
+  state.coordenadas = "";
+  state.endereco = "";
+  capturarLocalizacaoAutomatica();
   render();
   window.scrollTo(0,0);
 }
 
-/* ---------- Coleta Automática de Geolocalização ---------- */
+/* ---------- Coleta Automática de Geolocalização Prioritária ---------- */
 
 function capturarLocalizacaoAutomatica() {
   if (!("geolocation" in navigator)) {
     state.geoStatus = "erro";
     state.geoMensagem = "Seu navegador não suporta geolocalização.";
-    if (state.screen === 4) refreshTicketPre();
+    salvarEstado();
+    refreshTicketPre();
     return;
   }
 
@@ -231,6 +247,7 @@ function capturarLocalizacaoAutomatica() {
       } catch(e) {
       } finally {
         state.buscandoGeo = false;
+        salvarEstado();
         render();
       }
     },
@@ -238,45 +255,15 @@ function capturarLocalizacaoAutomatica() {
       state.buscandoGeo = false;
       state.geoStatus = "erro";
       if (err.code === err.PERMISSION_DENIED) {
-        state.geoMensagem = "Permissão de localização negada. Ative o GPS e atualize.";
+        state.geoMensagem = "Permissão de localização negada. Ative o GPS nas configurações do dispositivo/navegador.";
       } else {
-        state.geoMensagem = "Não foi possível obter a localização. Ligue o GPS.";
+        state.geoMensagem = "Não foi possível obter a localização. Por favor, ative o GPS e tente novamente.";
       }
+      salvarEstado();
       render();
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
   );
-}
-
-/* ---------- Componente Visual do GPS no Início ---------- */
-
-function renderGpsOverlay() {
-  const overlay = el("div", "gps-overlay");
-  overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;";
-  
-  const box = el("div", "gps-box");
-  box.style.cssText = "background:#fff;padding:30px 24px;border-radius:12px;text-align:center;max-width:400px;width:100%;box-shadow: 0 4px 15px rgba(0,0,0,0.3);";
-  
-  const icon = el("div", "", "📍");
-  icon.style.cssText = "font-size: 45px; margin-bottom: 15px;";
-
-  const title = el("h2", "", "Localização Necessária");
-  title.style.cssText = "color:#2c3e50; font-size: 22px; margin-bottom: 10px;";
-  
-  const text = el("p", "", "Para agilizar o atendimento e obter coordenadas precisas, por favor, ligue o GPS e permita o acesso ao iniciar.");
-  text.style.cssText = "color:#555; font-size: 16px; margin-bottom: 25px; line-height: 1.5;";
-  
-  const btn = el("button", "btn-primary", "ATIVAR GPS E INICIAR");
-  btn.style.cssText = "width: 100%; padding: 16px; font-size: 16px; font-weight: bold;";
-  btn.onclick = () => {
-    state.gpsSolicitado = true;
-    capturarLocalizacaoAutomatica();
-    render(); 
-  };
-  
-  box.append(icon, title, text, btn);
-  overlay.appendChild(box);
-  return overlay;
 }
 
 /* ---------- Helpers ---------- */
@@ -291,6 +278,7 @@ function toggleCheckbox(key, opt){
   if(!r.opts) r.opts = [];
   const i = r.opts.indexOf(opt);
   if(i>=0) r.opts.splice(i,1); else r.opts.push(opt);
+  salvarEstado();
 }
 
 function isChecked(key, opt){
@@ -298,12 +286,7 @@ function isChecked(key, opt){
   return !!(r && r.opts && r.opts.includes(opt));
 }
 
-function el(tag, className, text){
-  const e = document.createElement(tag);
-  if(className) e.className = className;
-  if(text!==undefined) e.textContent = text;
-  return e;
-}
+/* ---------- Componente de Navegação ---------- */
 
 function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = false) {
   const container = el("div", "nav-buttons");
@@ -331,24 +314,47 @@ function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = 
 const app = document.getElementById("app");
 
 function render(){
+  salvarEstado();
   app.innerHTML = "";
+  const wrap = el("div","screen-wrap");
   
-  // Exibe a tela obrigatória de GPS na primeira vez
-  if(!state.gpsSolicitado && !state.coordenadas) {
-     app.appendChild(renderGpsOverlay());
+  // Banner fixo de aviso de GPS caso não esteja capturado no início
+  if(!state.coordenadas && state.screen === 1) {
+    const topGeoAlert = el("div", "geo-alert-top");
+    topGeoAlert.style.background = "var(--amber, #f59e0b)";
+    topGeoAlert.style.color = "#000";
+    topGeoAlert.style.padding = "10px 15px";
+    topGeoAlert.style.fontSize = "13px";
+    topGeoAlert.style.fontWeight = "bold";
+    topGeoAlert.style.textAlign = "center";
+    topGeoAlert.style.marginBottom = "15px";
+    topGeoAlert.style.borderRadius = "8px";
+    
+    if(state.geoStatus === "buscando") {
+      topGeoAlert.textContent = "📍 Buscando sinal de GPS prioritário...";
+    } else {
+      topGeoAlert.textContent = "⚠️ GPS necessário ativado! Toque aqui para tentar obter localização.";
+      topGeoAlert.style.cursor = "pointer";
+      topGeoAlert.onclick = () => capturarLocalizacaoAutomatica();
+    }
+    wrap.appendChild(topGeoAlert);
   }
 
-  const wrap = el("div","screen-wrap");
   if(state.screen===1) wrap.appendChild(renderTipoScreen());
   else if(state.screen===2) wrap.appendChild(renderSubtipoScreen());
   else if(state.screen===3) wrap.appendChild(renderPerguntasScreen());
   else if(state.screen===4) wrap.appendChild(renderInformeScreen());
   app.appendChild(wrap);
-  
-  salvarEstado();
 }
 
-/* ---------- Telas 1 a 3 (Permanecem Idênticas) ---------- */
+function el(tag, className, text){
+  const e = document.createElement(tag);
+  if(className) e.className = className;
+  if(text!==undefined) e.textContent = text;
+  return e;
+}
+
+/* ---------- Tela 1: Tipo ---------- */
 
 function renderTipoScreen(){
   const c = el("div","screen");
@@ -379,8 +385,11 @@ function renderTipoScreen(){
     });
     c.appendChild(list);
   });
+
   return c;
 }
+
+/* ---------- Tela 2: Subtipo ---------- */
 
 function renderSubtipoScreen(){
   const t = tipoAtual();
@@ -391,6 +400,7 @@ function renderSubtipoScreen(){
 
   if(t.quantidadeVeiculos){
     const yellowBox = el("div","vehicle-summary-box");
+    
     const textContent = state.veiculosSelecionados.length > 0 
       ? state.veiculosSelecionados.join(" x ") 
       : "Nenhum veículo selecionado";
@@ -401,9 +411,13 @@ function renderSubtipoScreen(){
     if (state.veiculosSelecionados.length > 0) {
       const btnClear = el("button", "btn-clear-vehicles", "Limpar");
       btnClear.type = "button";
-      btnClear.onclick = () => { state.veiculosSelecionados = []; render(); };
+      btnClear.onclick = () => {
+        state.veiculosSelecionados = [];
+        render();
+      };
       yellowBox.appendChild(btnClear);
     }
+
     c.appendChild(yellowBox);
   }
 
@@ -415,8 +429,13 @@ function renderSubtipoScreen(){
       const btn = el("button","opt-row"+(count > 0 ? " selected" : ""));
       btn.type = "button";
       btn.appendChild(el("span","btn-label-clean", s.nome));
-      if(count > 0) btn.appendChild(el("span","count-badge", `+${count}`));
-      btn.onclick = ()=>{ state.veiculosSelecionados.push(s.nome); render(); };
+      if(count > 0){
+        btn.appendChild(el("span","count-badge", `+${count}`));
+      }
+      btn.onclick = ()=>{
+        state.veiculosSelecionados.push(s.nome);
+        render();
+      };
       list.appendChild(btn);
     } else {
       const selected = state.subtipoIds.includes(s.id);
@@ -431,13 +450,17 @@ function renderSubtipoScreen(){
   if (t.quantidadeVeiculos) {
     const standardNames = t.subtipos.map(s => s.nome);
     const customVehicles = [...new Set(state.veiculosSelecionados.filter(v => !standardNames.includes(v)))];
+    
     customVehicles.forEach(customName => {
       const count = state.veiculosSelecionados.filter(item => item === customName).length;
       const btn = el("button","opt-row selected");
       btn.type = "button";
       btn.appendChild(el("span","btn-label-clean", customName));
       btn.appendChild(el("span","count-badge", `+${count}`));
-      btn.onclick = ()=>{ state.veiculosSelecionados.push(customName); render(); };
+      btn.onclick = ()=>{
+        state.veiculosSelecionados.push(customName);
+        render();
+      };
       list.appendChild(btn);
     });
   } else {
@@ -445,14 +468,19 @@ function renderSubtipoScreen(){
       const btn = el("button","opt-row selected");
       btn.type = "button";
       btn.appendChild(el("span","btn-label-clean", customName));
-      btn.onclick = ()=>{ state.subtiposAdicionais.splice(idx, 1); render(); };
+      btn.onclick = ()=>{
+        state.subtiposAdicionais.splice(idx, 1);
+        render();
+      };
       list.appendChild(btn);
     });
   }
+
   c.appendChild(list);
 
   const fieldOutros = el("div", "field-outros");
   fieldOutros.appendChild(el("div", "field-label", "Outros (digite e clique em OK para adicionar)"));
+  
   const outrosRow = el("div", "outros-row");
   const inputOutros = el("input", "input-outros");
   inputOutros.type = "text";
@@ -464,26 +492,43 @@ function renderSubtipoScreen(){
   const adicionarCustomizado = () => {
     const val = inputOutros.value.trim();
     if (val) {
-      if (t.quantidadeVeiculos) state.veiculosSelecionados.push(val);
-      else if (!state.subtiposAdicionais.includes(val)) state.subtiposAdicionais.push(val);
+      if (t.quantidadeVeiculos) {
+        state.veiculosSelecionados.push(val);
+      } else {
+        if (!state.subtiposAdicionais.includes(val)) {
+          state.subtiposAdicionais.push(val);
+        }
+      }
       render();
     }
   };
 
   btnOk.onclick = adicionarCustomizado;
-  inputOutros.onkeypress = (e) => { if (e.key === "Enter") { e.preventDefault(); adicionarCustomizado(); } };
+  inputOutros.onkeypress = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      adicionarCustomizado();
+    }
+  };
+
   outrosRow.appendChild(inputOutros);
   outrosRow.appendChild(btnOk);
   fieldOutros.appendChild(outrosRow);
   c.appendChild(fieldOutros);
 
-  if(algumSubtipoResidencial()) c.appendChild(renderResidencialDetalhes());
+  if(algumSubtipoResidencial()){
+    c.appendChild(renderResidencialDetalhes());
+  }
 
-  const isNextDisabled = t.quantidadeVeiculos ? state.veiculosSelecionados.length === 0 : (state.subtipoIds.length === 0 && state.subtiposAdicionais.length === 0);
+  const isNextDisabled = t.quantidadeVeiculos
+    ? state.veiculosSelecionados.length === 0
+    : (state.subtipoIds.length === 0 && state.subtiposAdicionais.length === 0);
+
   const nav = renderNavButtons(
     () => { state.screen = 1; render(); window.scrollTo(0, 0); },
     () => { state.screen = 3; render(); window.scrollTo(0, 0); },
-    "Avançar", isNextDisabled
+    "Avançar",
+    isNextDisabled
   );
   c.appendChild(nav);
 
@@ -524,6 +569,8 @@ function renderResidencialDetalhes(){
   return box;
 }
 
+/* ---------- Campos ---------- */
+
 function labeledField(label, node){
   const f = el("div","field");
   f.appendChild(el("div","field-label",label));
@@ -538,12 +585,14 @@ function counterField(label, value, onChange){
   const minus = el("button","counter-btn","−"); minus.type="button";
   const val = el("span","counter-val", String(value).padStart(2,"0"));
   const plus = el("button","counter-btn","+"); plus.type="button";
-  minus.onclick=()=>onChange(Math.max(0,value-1));
-  plus.onclick=()=>onChange(value+1);
+  minus.onclick=()=> { onChange(Math.max(0,value-1)); };
+  plus.onclick=()=> { onChange(value+1); };
   ctrl.append(minus,val,plus);
   row.appendChild(ctrl);
   return row;
 }
+
+/* ---------- Tela 3: Perguntas ---------- */
 
 function renderPerguntasScreen(){
   const t = tipoAtual();
@@ -557,6 +606,7 @@ function renderPerguntasScreen(){
     let items = subtiposSelecionados().map(s=>s.nome).concat(state.subtiposAdicionais);
     subtipoText = items.join(", ");
   }
+
   c.appendChild(el("p","screen-sub", t.nome + (subtipoText ? " — " + subtipoText : "")));
 
   t.perguntas.forEach(p=>{
@@ -566,7 +616,8 @@ function renderPerguntasScreen(){
   const nav = renderNavButtons(
     () => { state.screen = 2; render(); window.scrollTo(0, 0); },
     () => { 
-      state.geradoEm = new Date(); 
+      if(!state.geradoEm) state.geradoEm = new Date(); 
+      if(!state.coordenadas) capturarLocalizacaoAutomatica();
       state.screen = 4; 
       render(); 
       window.scrollTo(0,0); 
@@ -580,6 +631,7 @@ function renderPerguntasScreen(){
 
 function renderPergunta(p){
   const box = el("div","subpanel");
+  
   if(p.type==="checkbox") renderCheckboxBlock(p, box);
   else if(p.type==="material") renderMaterialBlock(p, box);
   else if(p.type==="grupos") renderGruposBlock(p, box);
@@ -595,9 +647,13 @@ function renderPergunta(p){
     inputBlockText.type = "text";
     inputBlockText.placeholder = "Observação / Detalhes deste bloco...";
     inputBlockText.value = r.observacao || "";
-    inputBlockText.oninput = (e) => { r.observacao = e.target.value; };
+    inputBlockText.oninput = (e) => { 
+      r.observacao = e.target.value; 
+      salvarEstado();
+    };
     box.appendChild(labeledField("Observações do Bloco", inputBlockText));
   }
+
   return box;
 }
 
@@ -651,6 +707,7 @@ function renderMaterialBlock(p, box){
     b.onclick=()=>{
       if(active) delete r.classes[cl.nome];
       else r.classes[cl.nome] = [];
+      salvarEstado();
       render();
     };
     clBox.appendChild(b);
@@ -662,6 +719,7 @@ function renderMaterialBlock(p, box){
           const arr = r.classes[cl.nome];
           const i = arr.indexOf(it);
           if(i>=0) arr.splice(i,1); else arr.push(it);
+          salvarEstado();
         }));
       clBox.appendChild(itemsBox);
     }
@@ -683,6 +741,7 @@ function renderGruposBlock(p, box){
         const arr = r.groups[g.nome];
         const i = arr.indexOf(op);
         if(i>=0) arr.splice(i,1); else arr.push(op);
+        salvarEstado();
       }));
   });
   return box;
@@ -693,7 +752,11 @@ function renderContadoresBlock(p, box){
   const r = getResp(p.key);
   if(!r.counts) r.counts = {};
   p.options.forEach(op=>{
-    box.appendChild(counterField(op, r.counts[op]||0, v=>{r.counts[op]=v; render();}));
+    box.appendChild(counterField(op, r.counts[op]||0, v=>{
+      r.counts[op]=v; 
+      salvarEstado();
+      render();
+    }));
   });
   return box;
 }
@@ -711,14 +774,18 @@ function renderVitimasBlock(box){
   const semBtn = el("button","grid-btn full-width"+(r.sem?" selected":""));
   semBtn.type="button";
   semBtn.appendChild(el("span","grid-btn-text","Sem vítimas"));
-  semBtn.onclick=()=>{ r.sem=!r.sem; render(); };
+  semBtn.onclick=()=>{ 
+    r.sem=!r.sem; 
+    salvarEstado();
+    render(); 
+  };
   box.appendChild(semBtn);
   if(!r.sem){
-    box.appendChild(counterField("Quantidade de Vítimas", r.total||0, v=>{r.total=v; render();}));
-    box.appendChild(counterFieldColored("Verdes", "var(--green)", r.verde||0, v=>{r.verde=v; render();}));
-    box.appendChild(counterFieldColored("Amarelas", "var(--amber)", r.amarelo||0, v=>{r.amarelo=v; render();}));
-    box.appendChild(counterFieldColored("Vermelhas", "var(--red)", r.vermelho||0, v=>{r.vermelho=v; render();}));
-    box.appendChild(counterFieldColored("Cinzas", "var(--text-dim)", r.cinza||0, v=>{r.cinza=v; render();}));
+    box.appendChild(counterField("Quantidade de Vítimas", r.total||0, v=>{r.total=v; salvarEstado(); render();}));
+    box.appendChild(counterFieldColored("Verdes", "var(--green)", r.verde||0, v=>{r.verde=v; salvarEstado(); render();}));
+    box.appendChild(counterFieldColored("Amarelas", "var(--amber)", r.amarelo||0, v=>{r.amarelo=v; salvarEstado(); render();}));
+    box.appendChild(counterFieldColored("Vermelhas", "var(--red)", r.vermelho||0, v=>{r.vermelho=v; salvarEstado(); render();}));
+    box.appendChild(counterFieldColored("Cinzas", "var(--text-dim)", r.cinza||0, v=>{r.cinza=v; salvarEstado(); render();}));
   }
   return box;
 }
@@ -727,6 +794,7 @@ function renderRecursosBlock(p, box){
   box.appendChild(el("h3","subpanel-title","Recursos"));
   const r = getResp("recursos");
   if (!r.tipos) r.tipos = [];
+
   const qtdViaturas = r.tipos.length;
   r.viaturas = qtdViaturas;
 
@@ -744,8 +812,9 @@ function renderRecursosBlock(p, box){
       const i=r.tipos.indexOf(op);
       if(i>=0) r.tipos.splice(i,1); else r.tipos.push(op);
       r.viaturas = r.tipos.length;
+      salvarEstado();
     }));
-  box.appendChild(counterField("Efetivo empregado", r.efetivo||0, v=>{r.efetivo=v; render();}));
+  box.appendChild(counterField("Efetivo empregado", r.efetivo||0, v=>{r.efetivo=v; salvarEstado(); render();}));
   return box;
 }
 
@@ -756,14 +825,18 @@ function renderTextoBlock(p, box){
   ta.rows = 4;
   ta.placeholder = "Digite observações adicionais...";
   ta.value = r.texto || "";
-  ta.oninput = (e)=>{ r.texto = e.target.value; };
+  ta.oninput = (e)=>{ 
+    r.texto = e.target.value; 
+    salvarEstado();
+  };
   box.appendChild(ta);
   return box;
 }
 
-/* ---------- Geração do Informe ---------- */
+/* ---------- Geração do Informe Padronizado ---------- */
 
 const SEPARADOR = "--------------------------------";
+
 function pad2(n){ return String(n).padStart(2,"0"); }
 
 function gerarTextoInforme(){
@@ -772,72 +845,87 @@ function gerarTextoInforme(){
   const blocos = [];
 
   const cab = ["*AVALIAÇÃO DA CENA*"];
-  const agora = state.geradoEm ? new Date(state.geradoEm) : new Date();
+  const agora = state.geradoEm || new Date();
   cab.push("*DATA:* " + agora.toLocaleDateString("pt-BR"));
   cab.push("*HORA:* " + agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) + " (coleta das informações)");
-  if(state.coordenadas && state.coordenadas.trim()) cab.push("*COORDENADAS:* " + state.coordenadas.trim());
-  if(state.endereco && state.endereco.trim()) cab.push("*ENDEREÇO:* " + state.endereco.trim());
-  cab.push("*MISSÃO:* " + (t.missao || ""));
+  if(state.coordenadas.trim()) cab.push("*COORDENADAS:* " + state.coordenadas.trim());
+  if(state.endereco.trim()) cab.push("*ENDEREÇO:* " + state.endereco.trim());
+  cab.push("*MISSÃO:* " + (t ? (t.missao || "") : ""));
   blocos.push(cab);
 
-  const loc = [];
-  loc.push("TIPO: " + t.nome.toUpperCase());
+  if (t) {
+    const loc = [];
+    loc.push("TIPO: " + t.nome.toUpperCase());
 
-  if(t.quantidadeVeiculos){
-    if(state.veiculosSelecionados.length > 0) loc.push("SUBTIPO: " + state.veiculosSelecionados.join(" x "));
-  } else {
-    let listaSubtipos = subs.map(s => s.nome).concat(state.subtiposAdicionais);
-    if(listaSubtipos.length > 0) loc.push("SUBTIPO: " + listaSubtipos.join(", "));
-  }
-
-  if(subs.some(s=>s.residencial)){
-    const rd = state.residencial;
-    if(rd.tipoImovel) loc.push("Edificação: " + rd.tipoImovel);
-    if(rd.andar>0) loc.push("Andar: " + rd.andar);
-    if(rd.pavimentos>0) loc.push("Pavimentos: " + pad2(rd.pavimentos));
-    if(rd.pavimentoFogo>0) loc.push("Fogo no pavimento: " + pad2(rd.pavimentoFogo));
-    if(rd.comodos.length) loc.push("Cômodo(s) com fogo: " + rd.comodos.join(", "));
-  }
-  blocos.push(loc);
-
-  const sit = [];
-  t.perguntas.forEach(p=>{
-    const r = state.respostas[p.key];
-    if(!r) return;
-    let linhaMsg = "";
-    
-    if(p.type==="checkbox" && p.key==="situacao" && r.opts && r.opts.length){
-      linhaMsg = "SITUAÇÃO ENCONTRADA: " + r.opts.join(", ");
-    } else if(p.type==="material" && r.classes){
-      const partes = Object.entries(r.classes).filter(([k,itens])=>itens.length>0).map(([k,itens])=>k+" — "+itens.join(", "));
-      if(partes.length) linhaMsg = "MATERIAL QUEIMANDO: " + partes.join(" | ");
-    } else if(p.type==="checkbox" && p.key==="bloqueio" && r.opts && r.opts.length){
-      linhaMsg = "BLOQUEIO DA VIA: " + r.opts.join(", ");
-    } else if(p.type==="checkbox" && p.key==="sentido" && r.opts && r.opts.length){
-      linhaMsg = "SENTIDO: " + r.opts.join(", ");
-    } else if(p.type==="checkbox" && p.key==="materialTransportado" && r.opts && r.opts.length){
-      linhaMsg = "MATERIAL TRANSPORTADO: " + r.opts.join(", ");
-    } else if(p.type==="grupos"){
-      const partes = p.grupos.map(g=>({nome:g.nome, valores:(r.groups && r.groups[g.nome]) || []})).filter(x=>x.valores.length>0).map(x=>x.nome + ": " + x.valores.join(", "));
-      if(partes.length) linhaMsg = "INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n");
-    } else if(p.type==="contadores" && r.counts){
-      const entries = Object.entries(r.counts).filter(([k,v])=>v>0);
-      if(entries.length) linhaMsg = "FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n");
-    }
-
-    const ignorarNoLoop = ["vitimas", "situacaoVitimas", "recursos", "observacoes"];
-    if (!ignorarNoLoop.includes(p.key)) {
-      const temObs = r.observacao && r.observacao.trim();
-      if(linhaMsg) {
-        if(temObs) linhaMsg += " | " + r.observacao.trim();
-        sit.push(linhaMsg);
-      } else if (temObs) {
-        let fallbackLabel = p.label ? p.label.toUpperCase() : p.key.toUpperCase();
-        sit.push(fallbackLabel + ": " + r.observacao.trim());
+    if(t.quantidadeVeiculos){
+      if(state.veiculosSelecionados.length > 0){
+        loc.push("SUBTIPO: " + state.veiculosSelecionados.join(" x "));
+      }
+    } else {
+      let listaSubtipos = subs.map(s => s.nome).concat(state.subtiposAdicionais);
+      if(listaSubtipos.length > 0){
+        loc.push("SUBTIPO: " + listaSubtipos.join(", "));
       }
     }
-  });
-  blocos.push(sit);
+
+    if(subs.some(s=>s.residencial)){
+      const rd = state.residencial;
+      if(rd.tipoImovel) loc.push("Edificação: " + rd.tipoImovel);
+      if(rd.andar>0) loc.push("Andar: " + rd.andar);
+      if(rd.pavimentos>0) loc.push("Pavimentos: " + pad2(rd.pavimentos));
+      if(rd.pavimentoFogo>0) loc.push("Fogo no pavimento: " + pad2(rd.pavimentoFogo));
+      if(rd.comodos.length) loc.push("Cômodo(s) com fogo: " + rd.comodos.join(", "));
+    }
+    blocos.push(loc);
+
+    const sit = [];
+    t.perguntas.forEach(p=>{
+      const r = state.respostas[p.key];
+      if(!r) return;
+      let linhaMsg = "";
+      
+      if(p.type==="checkbox" && p.key==="situacao" && r.opts && r.opts.length){
+        linhaMsg = "SITUAÇÃO ENCONTRADA: " + r.opts.join(", ");
+      } else if(p.type==="material" && r.classes){
+        const partes = Object.entries(r.classes)
+          .filter(([k,itens])=>itens.length>0)
+          .map(([k,itens])=>k+" — "+itens.join(", "));
+        if(partes.length) linhaMsg = "MATERIAL QUEIMANDO: " + partes.join(" | ");
+      } else if(p.type==="checkbox" && p.key==="bloqueio" && r.opts && r.opts.length){
+        linhaMsg = "BLOQUEIO DA VIA: " + r.opts.join(", ");
+      } else if(p.type==="checkbox" && p.key==="sentido" && r.opts && r.opts.length){
+        linhaMsg = "SENTIDO: " + r.opts.join(", ");
+      } else if(p.type==="checkbox" && p.key==="materialTransportado" && r.opts && r.opts.length){
+        linhaMsg = "MATERIAL TRANSPORTADO: " + r.opts.join(", ");
+      } else if(p.type==="grupos"){
+        const partes = p.grupos
+          .map(g=>({nome:g.nome, valores:(r.groups && r.groups[g.nome]) || []}))
+          .filter(x=>x.valores.length>0)
+          .map(x=>x.nome + ": " + x.valores.join(", "));
+        if(partes.length) {
+          linhaMsg = "INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n");
+        }
+      } else if(p.type==="contadores" && r.counts){
+        const entries = Object.entries(r.counts).filter(([k,v])=>v>0);
+        if(entries.length) {
+          linhaMsg = "FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n");
+        }
+      }
+
+      const ignorarNoLoop = ["vitimas", "situacaoVitimas", "recursos", "observacoes"];
+      if (!ignorarNoLoop.includes(p.key)) {
+        const temObs = r.observacao && r.observacao.trim();
+        if(linhaMsg) {
+          if(temObs) linhaMsg += " | " + r.observacao.trim();
+          sit.push(linhaMsg);
+        } else if (temObs) {
+          let fallbackLabel = p.label ? p.label.toUpperCase() : p.key.toUpperCase();
+          sit.push(fallbackLabel + ": " + r.observacao.trim());
+        }
+      }
+    });
+    blocos.push(sit);
+  }
 
   const vit = [];
   const rv = state.respostas["vitimas"];
@@ -855,6 +943,7 @@ function gerarTextoInforme(){
       
       let linhaVit = "";
       if(partes.length) linhaVit = "VÍTIMAS: " + partes.join(" | ");
+      
       if(temObs){
          if(linhaVit) linhaVit += " | " + rv.observacao.trim();
          else linhaVit = "VÍTIMAS: " + rv.observacao.trim();
@@ -909,7 +998,7 @@ function gerarTextoInforme(){
   return naoVazios.map(b=>b.join("\n")).join("\n"+SEPARADOR+"\n");
 }
 
-/* ---------- Tela 4: Informe Final ---------- */
+/* ---------- Tela 4: Informe ---------- */
 
 let ticketPreRef = null;
 
@@ -921,28 +1010,19 @@ function renderInformeScreen(){
   const c = el("div","screen");
   c.appendChild(el("h1","screen-title","Informe Operacional"));
 
-  // [ATUALIZADO] Campo de Fotos Múltiplas (sem bloqueio de environment)
-  const photoField = el("div", "field");
-  photoField.appendChild(el("div", "field-label", "Anexar Fotos da Cena (Múltiplas fotos permitidas)"));
-  const photoInput = el("input", "text-input");
-  photoInput.type = "file";
-  photoInput.accept = "image/*";
-  photoInput.multiple = true; 
-  photoInput.id = "fotoCena";
-  photoField.appendChild(photoInput);
-  c.appendChild(photoField);
-
   if(!state.coordenadas) {
     const alertBox = el("div", "geo-alert-box");
     const title = el("div", "geo-alert-title", "📍 Localização não capturada");
     const desc = el("div", "geo-alert-desc", 
-      state.geoMensagem || "Não foi possível resgatar o GPS da sua posição."
+      state.geoMensagem || "Por favor, ligue a Localização (GPS) do seu aparelho e permita o acesso ao navegador para incluir endereço e coordenadas no informe."
     );
     
-    const btnRetry = el("button", "btn-geo", state.buscandoGeo ? "Buscando localização..." : "Tentar Obter Localização Novamente");
+    const btnRetry = el("button", "btn-geo", state.buscandoGeo ? "Buscando localização..." : "Ligar/Tentar Obter Localização");
     btnRetry.type = "button";
     btnRetry.disabled = state.buscandoGeo;
-    btnRetry.onclick = () => { capturarLocalizacaoAutomatica(); };
+    btnRetry.onclick = () => {
+      capturarLocalizacaoAutomatica();
+    };
 
     alertBox.append(title, desc, btnRetry);
     c.appendChild(alertBox);
@@ -957,30 +1037,11 @@ function renderInformeScreen(){
 
   const actions = el("div","action-grid");
 
-  // [ATUALIZADO] Compartilhamento com array de arquivos
-  const btnWpp = el("button","btn-action btn-whatsapp","ENVIAR / COMPARTILHAR");
+  const btnWpp = el("button","btn-action btn-whatsapp","ENVIAR PELO WHATSAPP");
   btnWpp.type="button";
-  btnWpp.onclick = async ()=>{
-    const texto = gerarTextoInforme();
-    const input = document.getElementById('fotoCena');
-    const filesArray = (input && input.files.length > 0) ? Array.from(input.files) : [];
-    
-    if (navigator.share) {
-      try {
-        const shareData = {
-          title: 'Informe Operacional',
-          text: texto,
-        };
-        if (filesArray.length && navigator.canShare && navigator.canShare({ files: filesArray })) {
-           shareData.files = filesArray;
-        }
-        await navigator.share(shareData);
-      } catch(e) {
-        console.log("Compartilhamento cancelado ou falhou", e);
-      }
-    } else {
-       window.open("https://wa.me/?text=" + encodeURIComponent(texto), "_blank");
-    }
+  btnWpp.onclick = ()=>{
+    const url = "https://wa.me/?text=" + encodeURIComponent(gerarTextoInforme());
+    window.open(url, "_blank");
   };
 
   const btnCopy = el("button","btn-action btn-copy","COPIAR TEXTO");
@@ -1013,7 +1074,8 @@ function renderInformeScreen(){
   c.appendChild(actions);
 
   const nav = renderNavButtons(
-    () => { state.screen = 3; render(); window.scrollTo(0, 0); }, null
+    () => { state.screen = 3; render(); window.scrollTo(0, 0); },
+    null
   );
   c.appendChild(nav);
 
@@ -1023,7 +1085,12 @@ function renderInformeScreen(){
 /* ---------- Inicialização ---------- */
 
 carregarEstado();
-render(); // A chamada do render agora cria um overlay se o GPS não foi solicitado.
+render();
+
+// Tenta pegar a geolocalização logo na carga inicial da aplicação de forma prioritária
+if (!state.coordenadas) {
+  capturarLocalizacaoAutomatica();
+}
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
