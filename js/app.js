@@ -215,7 +215,7 @@ function capturarLocalizacaoAutomatica() {
       const lon = pos.coords.longitude.toFixed(6);
       state.coordenadas = `${lat}, ${lon}`;
       state.geoStatus = "sucesso";
-      salvarDados(); // Salvaguarda imediata ao obter coord
+      salvarDados();
 
       try {
         const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
@@ -233,7 +233,7 @@ function capturarLocalizacaoAutomatica() {
             if (cidade) endFmt += (endFmt ? ", " : "") + cidade;
 
             state.endereco = endFmt || data.display_name;
-            salvarDados(); // Atualiza localstorage com endereço novo
+            salvarDados();
           }
         }
       } catch(e) {
@@ -300,7 +300,7 @@ function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = 
 const app = document.getElementById("app");
 
 function render(){
-  salvarDados(); // Toda vez que a tela redesenhar, os dados estão garantidos
+  salvarDados();
   app.innerHTML = "";
   const wrap = el("div","screen-wrap");
   if(state.screen===1) wrap.appendChild(renderTipoScreen());
@@ -317,29 +317,41 @@ function el(tag, className, text){
   return e;
 }
 
-/* ---------- Tela 1: Tipo & Menu ---------- */
+/* ---------- Tela 1: Tipo & Menu (Atualizado com Flexbox) ---------- */
 
 function renderTipoScreen(){
   const c = el("div","screen");
   
+  // Cabeçalho com Flexbox para alinhar título e menu lateralmente com segurança
+  const headerFlex = el("div");
+  headerFlex.style.display = "flex";
+  headerFlex.style.justifyContent = "space-between";
+  headerFlex.style.alignItems = "flex-start";
+  headerFlex.style.marginBottom = "8px";
+
+  const titlesDiv = el("div");
+  titlesDiv.appendChild(el("h1","screen-title","Tipo de Ocorrência"));
+  titlesDiv.appendChild(el("p","screen-sub","Escolha única — selecione o tipo de ocorrência atendida"));
+  headerFlex.appendChild(titlesDiv);
+
   // MENU 3 PONTINHOS
   const menuCont = el("div");
-  menuCont.style.position = "absolute";
-  menuCont.style.top = "20px";
-  menuCont.style.right = "20px";
+  menuCont.style.position = "relative";
   
   const btnMenu = el("button", "", "⋮");
-  btnMenu.style.fontSize = "26px";
+  btnMenu.style.fontSize = "28px";
   btnMenu.style.background = "transparent";
   btnMenu.style.border = "none";
   btnMenu.style.cursor = "pointer";
-  btnMenu.style.color = "var(--primary-color, #333)";
+  btnMenu.style.padding = "0 4px";
+  btnMenu.style.color = "#333";
+  btnMenu.title = "Menu";
   
   const dropdown = el("div");
   dropdown.style.display = "none";
   dropdown.style.position = "absolute";
   dropdown.style.right = "0";
-  dropdown.style.top = "35px";
+  dropdown.style.top = "36px";
   dropdown.style.background = "#fff";
   dropdown.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
   dropdown.style.borderRadius = "8px";
@@ -361,11 +373,11 @@ function renderTipoScreen(){
   };
   
   dropdown.appendChild(createOp("Read-me", () => {
-    alert("Instruções:\n\n1. O app salva seu progresso automaticamente.\n2. O GPS já começou a ser capturado em segundo plano.\n3. Preencha as etapas e gere seu informe padrão para a central.");
+    alert("Instruções:\n\n1. O app salva seu progresso automaticamente a cada clique.\n2. O GPS é capturado logo no início em segundo plano.\n3. Preencha as etapas e gere seu informe padrão para a central.");
     dropdown.style.display = "none";
   }));
   dropdown.appendChild(createOp("Versão", () => {
-    alert("App Informe Operacional\nVersão: 1.1.0\nNovidades: Salvamento local automático, GPS prioritário e estruturação rígida de dados.");
+    alert("App Informe Operacional\nVersão: 1.1.1\nNovidades: Menu 3 pontinhos alinhado, salvamento local automático e padronização para central.");
     dropdown.style.display = "none";
   }));
   dropdown.appendChild(createOp("Sair", () => {
@@ -375,16 +387,20 @@ function renderTipoScreen(){
     dropdown.style.display = "none";
   }));
   
-  btnMenu.onclick = () => {
+  btnMenu.onclick = (e) => {
+    e.stopPropagation();
     dropdown.style.display = dropdown.style.display === "none" ? "block" : "none";
   };
+
+  // Fecha o menu ao clicar em qualquer outro lugar da tela
+  document.addEventListener("click", () => {
+    if (dropdown) dropdown.style.display = "none";
+  });
   
   menuCont.append(btnMenu, dropdown);
-  c.appendChild(menuCont);
+  headerFlex.appendChild(menuCont);
+  c.appendChild(headerFlex);
   // FIM DO MENU
-
-  c.appendChild(el("h1","screen-title","Tipo de Ocorrência"));
-  c.appendChild(el("p","screen-sub","Escolha única — selecione o tipo de ocorrência atendida"));
 
   CATEGORIAS_OCORRENCIAS.forEach(cat=>{
     const sectionTitle = el("h2","category-title", cat.categoria);
@@ -853,7 +869,6 @@ function gerarTextoInforme(){
   const cab = ["*AVALIAÇÃO DA CENA*"];
   const agora = state.geradoEm || new Date();
   
-  // PADRONIZAÇÃO RÍGIDA: As chaves sempre existem e possuem fallback para "NÃO INFORMADO"
   cab.push("*DATA:* " + agora.toLocaleDateString("pt-BR"));
   cab.push("*HORA:* " + agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) + " (coleta das informações)");
   cab.push("*COORDENADAS:* " + (state.coordenadas.trim() || "NÃO INFORMADA"));
@@ -1091,8 +1106,8 @@ function renderInformeScreen(){
 
 /* ---------- Inicialização ---------- */
 
-carregarDados(); // Resgata dados do localstorage ao abrir
-render(); // Monta a tela na etapa atual salva
+carregarDados();
+render();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
@@ -1100,7 +1115,6 @@ if("serviceWorker" in navigator){
   });
 }
 
-// Inicializa a captura GPS com precisão máxima como prioridade desde a primeira tela
 if (!state.coordenadas && !state.buscandoGeo) {
   capturarLocalizacaoAutomatica();
 }
