@@ -2,7 +2,7 @@
    AVALIAÇÃO DA CENA — App de Informe Operacional
    ========================================================= */
 
-/* ---------- Blocos de perguntas reutilizáveis[cite: 1] ---------- */
+/* ---------- Blocos de perguntas reutilizáveis ---------- */
 
 const MATERIAL_EDIFICACOES = {
   label: "Tipo de Material Queimando",
@@ -67,7 +67,7 @@ const INFO_VEGETACAO = { key:"infoVegetacao", label:"Informações Adicionais", 
 const FERRAMENTAS_VEGETACAO = { key:"ferramentas", label:"Ferramentas", type:"contadores",
   options:["Abafador","Bomba Costal","Enxada","Pá","McLeod","Facão"] };
 
-/* ---------- Estrutura de Tipos Agrupados[cite: 1] ---------- */
+/* ---------- Estrutura de Tipos Agrupados ---------- */
 
 const CATEGORIAS_OCORRENCIAS = [
   {
@@ -138,9 +138,7 @@ function obterTodosTipos(){
   return todos;
 }
 
-/* ---------- Estado e Salvaguarda LocalStorage ---------- */
-
-const STORAGE_KEY = "app_informe_operacional_state_v1";
+/* ---------- Estado e Salvaguarda de Dados ---------- */
 
 const state = {
   screen: 1,
@@ -154,27 +152,22 @@ const state = {
   coordenadas: "",
   geradoEm: null,
   buscandoGeo: false,
-  geoStatus: "pendente",
-  geoMensagem: ""
 };
 
-function salvarEstado() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch(e) {
-    console.error("Erro ao salvar no localStorage", e);
-  }
+function salvarDados() {
+  localStorage.setItem("appOcorrenciaState", JSON.stringify(state));
 }
 
-function carregarEstado() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if(saved) {
-      const parsed = JSON.parse(saved);
+function carregarDados() {
+  const s = localStorage.getItem("appOcorrenciaState");
+  if (s) {
+    try {
+      const parsed = JSON.parse(s);
       Object.assign(state, parsed);
+      if (state.geradoEm) state.geradoEm = new Date(state.geradoEm);
+    } catch (e) {
+      console.error("Erro ao ler localStorage", e);
     }
-  } catch(e) {
-    console.error("Erro ao carregar do localStorage", e);
   }
 }
 
@@ -184,11 +177,9 @@ function algumSubtipoResidencial(){ return subtiposSelecionados().some(s=>s.resi
 function toggleSubtipo(id){
   const i = state.subtipoIds.indexOf(id);
   if(i>=0) state.subtipoIds.splice(i,1); else state.subtipoIds.push(id);
-  salvarEstado();
 }
 
 function resetForm(){
-  localStorage.removeItem(STORAGE_KEY);
   state.screen = 1;
   state.tipoId = null;
   state.subtipoIds = [];
@@ -196,37 +187,27 @@ function resetForm(){
   state.veiculosSelecionados = [];
   state.residencial = { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] };
   state.respostas = {};
-  state.geradoEm = null;
-  state.coordenadas = "";
   state.endereco = "";
-  state.geoStatus = "pendente";
-  state.geoMensagem = "";
+  state.coordenadas = "";
+  state.geradoEm = null;
+  localStorage.removeItem("appOcorrenciaState");
   render();
   window.scrollTo(0,0);
 }
 
-/* ---------- Coleta Automática de Geolocalização de Alta Precisão ---------- */
+/* ---------- Coleta Automática de Geolocalização ---------- */
 
 function capturarLocalizacaoAutomatica() {
   if (!("geolocation" in navigator)) {
     state.geoStatus = "erro";
     state.geoMensagem = "Seu navegador não suporta geolocalização.";
-    salvarEstado();
     render();
     return;
   }
 
   state.buscandoGeo = true;
   state.geoStatus = "buscando";
-  state.geoMensagem = "Solicitando sinal de GPS de alta precisão...";
   render();
-
-  // Opções configuradas para forçar o uso máximo do GPS do dispositivo
-  const options = {
-    enableHighAccuracy: true, // Força o uso do GPS real em vez de apenas torre/Wi-Fi
-    timeout: 12000,           // Tempo limite de espera (12 segundos)
-    maximumAge: 0             // Não aceita cache antigo, exige posição atualizada
-  };
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
@@ -234,6 +215,7 @@ function capturarLocalizacaoAutomatica() {
       const lon = pos.coords.longitude.toFixed(6);
       state.coordenadas = `${lat}, ${lon}`;
       state.geoStatus = "sucesso";
+      salvarDados(); // Salvaguarda imediata ao obter coord
 
       try {
         const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
@@ -251,31 +233,26 @@ function capturarLocalizacaoAutomatica() {
             if (cidade) endFmt += (endFmt ? ", " : "") + cidade;
 
             state.endereco = endFmt || data.display_name;
+            salvarDados(); // Atualiza localstorage com endereço novo
           }
         }
       } catch(e) {
-        console.error("Erro ao buscar endereço reverso", e);
       } finally {
         state.buscandoGeo = false;
-        salvarEstado();
         render();
       }
     },
     (err) => {
       state.buscandoGeo = false;
       state.geoStatus = "erro";
-      
-      // Identifica se o erro ocorreu porque o GPS está desligado ou negado
       if (err.code === err.PERMISSION_DENIED) {
-        state.geoMensagem = "Permissão de localização negada. Autorize o acesso no navegador.";
+        state.geoMensagem = "Permissão negada. Ative o GPS.";
       } else {
-        state.geoMensagem = "GPS desativado ou sem sinal. Por favor, ligue a localização nas configurações do celular e toque em Ativar novamente.";
+        state.geoMensagem = "Erro no GPS. Ative e tente de novo.";
       }
-      
-      salvarEstado();
       render();
     },
-    options
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
   );
 }
 
@@ -291,7 +268,6 @@ function toggleCheckbox(key, opt){
   if(!r.opts) r.opts = [];
   const i = r.opts.indexOf(opt);
   if(i>=0) r.opts.splice(i,1); else r.opts.push(opt);
-  salvarEstado();
 }
 
 function isChecked(key, opt){
@@ -303,14 +279,12 @@ function isChecked(key, opt){
 
 function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = false) {
   const container = el("div", "nav-buttons");
-
   if (onBack) {
     const btnBack = el("button", "btn-blue", "Voltar");
     btnBack.type = "button";
     btnBack.onclick = onBack;
     container.appendChild(btnBack);
   }
-
   if (onNext) {
     const btnNext = el("button", "btn-primary", nextText);
     btnNext.type = "button";
@@ -318,31 +292,21 @@ function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = 
     btnNext.onclick = onNext;
     container.appendChild(btnNext);
   }
-
   return container;
 }
 
-/* ---------- Renderização Principal ---------- */
+/* ---------- Render ---------- */
 
 const app = document.getElementById("app");
 
 function render(){
-  salvarEstado();
+  salvarDados(); // Toda vez que a tela redesenhar, os dados estão garantidos
   app.innerHTML = "";
   const wrap = el("div","screen-wrap");
-  
-  if(!state.coordenadas && state.geoStatus !== "sucesso") {
-    wrap.appendChild(renderGpsActionScreen());
-  } else if(state.screen===1) {
-    wrap.appendChild(renderTipoScreen());
-  } else if(state.screen===2) {
-    wrap.appendChild(renderSubtipoScreen());
-  } else if(state.screen===3) {
-    wrap.appendChild(renderPerguntasScreen());
-  } else if(state.screen===4) {
-    wrap.appendChild(renderInformeScreen());
-  }
-  
+  if(state.screen===1) wrap.appendChild(renderTipoScreen());
+  else if(state.screen===2) wrap.appendChild(renderSubtipoScreen());
+  else if(state.screen===3) wrap.appendChild(renderPerguntasScreen());
+  else if(state.screen===4) wrap.appendChild(renderInformeScreen());
   app.appendChild(wrap);
 }
 
@@ -353,114 +317,72 @@ function el(tag, className, text){
   return e;
 }
 
-/* ---------- Tela de Ação: Ativação de GPS Conforme o Exemplo ---------- */
-
-function renderGpsActionScreen(){
-  const c = el("div","screen");
-  
-  const box = el("div","subpanel");
-  box.style.padding = "24px 20px";
-
-  box.appendChild(el("h2","subpanel-title", "Para continuar, o dispositivo precisará usar a Precisão de Local"));
-
-  const sub = el("p","","Estas configurações precisam estar ativadas:");
-  sub.style.fontSize = "14px";
-  sub.style.color = "var(--text-dim, #9ca3af)";
-  sub.style.marginBottom = "24px";
-  box.appendChild(sub);
-
-  // Item 1: Localização do dispositivo
-  const item1 = el("div", "");
-  item1.style.display = "flex";
-  item1.style.alignItems = "flex-start";
-  item1.style.gap = "14px";
-  item1.style.marginBottom = "20px";
-  
-  const icon1 = el("span", "", "📍");
-  icon1.style.fontSize = "22px";
-  item1.appendChild(icon1);
-
-  const text1Content = el("div", "");
-  const t1Title = el("div", "", "Localização do dispositivo");
-  t1Title.style.fontWeight = "bold";
-  t1Title.style.fontSize = "15px";
-  text1Content.appendChild(t1Title);
-  item1.appendChild(text1Content);
-  box.appendChild(item1);
-
-  // Item 2: Precisão de Local
-  const item2 = el("div", "");
-  item2.style.display = "flex";
-  item2.style.alignItems = "flex-start";
-  item2.style.gap = "14px";
-  item2.style.marginBottom = "28px";
-
-  const icon2 = el("span", "", "🎯");
-  icon2.style.fontSize = "22px";
-  item2.appendChild(icon2);
-
-  const text2Content = el("div", "");
-  const t2Title = el("div", "", "Precisão de Local");
-  t2Title.style.fontWeight = "bold";
-  t2Title.style.fontSize = "15px";
-  const t2Desc = el("div", "", "Com o recurso Precisão de Local, apps e serviços podem acessar dados ainda mais precisos. O Google analisa periodicamente os sensores e sinais sem fio para entender onde essas redes estão.");
-  t2Desc.style.fontSize = "13px";
-  t2Desc.style.color = "var(--text-dim, #9ca3af)";
-  t2Desc.style.marginTop = "6px";
-  text2Content.append(t2Title, t2Desc);
-  item2.appendChild(text2Content);
-  box.appendChild(item2);
-
-  if(state.geoMensagem || state.buscandoGeo) {
-    const msg = el("div", "", state.buscandoGeo ? "Buscando sinal de GPS..." : state.geoMensagem);
-    msg.style.fontSize = "13px";
-    msg.style.color = state.geoStatus === "erro" ? "var(--red)" : "var(--amber)";
-    msg.style.marginBottom = "16px";
-    msg.style.textAlign = "center";
-    box.appendChild(msg);
-  }
-
-  // Botões "Agora não" / "Ativar"
-  const btnRow = el("div", "");
-  btnRow.style.display = "flex";
-  btnRow.style.gap = "12px";
-
-  const btnSkip = el("button", "btn-blue", "Agora não");
-  btnSkip.type = "button";
-  btnSkip.style.flex = "1";
-  btnSkip.style.background = "transparent";
-  btnSkip.style.border = "1px solid var(--border, #374151)";
-  btnSkip.style.color = "var(--text, #fff)";
-  btnSkip.style.padding = "14px";
-  btnSkip.style.borderRadius = "8px";
-  btnSkip.onclick = () => {
-    state.coordenadas = "Não informada";
-    state.geoStatus = "sucesso";
-    render();
-  };
-
-  const btnAtivar = el("button", "btn-primary", state.buscandoGeo ? "Ativando..." : "Ativar");
-  btnAtivar.type = "button";
-  btnAtivar.disabled = state.buscandoGeo;
-  btnAtivar.style.flex = "1";
-  btnAtivar.style.padding = "14px";
-  btnAtivar.style.borderRadius = "8px";
-  btnAtivar.style.fontWeight = "bold";
-  btnAtivar.onclick = () => {
-    capturarLocalizacaoAutomatica();
-  };
-
-  btnRow.append(btnSkip, btnAtivar);
-  box.appendChild(btnRow);
-
-  c.appendChild(box);
-  return c;
-}
-
-/* ---------- Tela 1: Tipo ---------- */
+/* ---------- Tela 1: Tipo & Menu ---------- */
 
 function renderTipoScreen(){
   const c = el("div","screen");
+  
+  // MENU 3 PONTINHOS
+  const menuCont = el("div");
+  menuCont.style.position = "absolute";
+  menuCont.style.top = "20px";
+  menuCont.style.right = "20px";
+  
+  const btnMenu = el("button", "", "⋮");
+  btnMenu.style.fontSize = "26px";
+  btnMenu.style.background = "transparent";
+  btnMenu.style.border = "none";
+  btnMenu.style.cursor = "pointer";
+  btnMenu.style.color = "var(--primary-color, #333)";
+  
+  const dropdown = el("div");
+  dropdown.style.display = "none";
+  dropdown.style.position = "absolute";
+  dropdown.style.right = "0";
+  dropdown.style.top = "35px";
+  dropdown.style.background = "#fff";
+  dropdown.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+  dropdown.style.borderRadius = "8px";
+  dropdown.style.zIndex = "999";
+  dropdown.style.overflow = "hidden";
+  dropdown.style.minWidth = "140px";
+  
+  const createOp = (txt, action) => {
+    const item = el("div", "", txt);
+    item.style.padding = "12px 16px";
+    item.style.cursor = "pointer";
+    item.style.borderBottom = "1px solid #f0f0f0";
+    item.style.fontSize = "14px";
+    item.style.color = "#333";
+    item.onmouseover = () => item.style.background = "#f9f9f9";
+    item.onmouseout = () => item.style.background = "#fff";
+    item.onclick = action;
+    return item;
+  };
+  
+  dropdown.appendChild(createOp("Read-me", () => {
+    alert("Instruções:\n\n1. O app salva seu progresso automaticamente.\n2. O GPS já começou a ser capturado em segundo plano.\n3. Preencha as etapas e gere seu informe padrão para a central.");
+    dropdown.style.display = "none";
+  }));
+  dropdown.appendChild(createOp("Versão", () => {
+    alert("App Informe Operacional\nVersão: 1.1.0\nNovidades: Salvamento local automático, GPS prioritário e estruturação rígida de dados.");
+    dropdown.style.display = "none";
+  }));
+  dropdown.appendChild(createOp("Sair", () => {
+    if(confirm("Tem certeza que deseja sair? Todos os dados da ocorrência atual serão perdidos e apagados da memória.")){
+      resetForm();
+    }
+    dropdown.style.display = "none";
+  }));
+  
+  btnMenu.onclick = () => {
+    dropdown.style.display = dropdown.style.display === "none" ? "block" : "none";
+  };
+  
+  menuCont.append(btnMenu, dropdown);
+  c.appendChild(menuCont);
+  // FIM DO MENU
+
   c.appendChild(el("h1","screen-title","Tipo de Ocorrência"));
   c.appendChild(el("p","screen-sub","Escolha única — selecione o tipo de ocorrência atendida"));
 
@@ -520,7 +442,6 @@ function renderSubtipoScreen(){
       };
       yellowBox.appendChild(btnClear);
     }
-
     c.appendChild(yellowBox);
   }
 
@@ -588,6 +509,7 @@ function renderSubtipoScreen(){
   const inputOutros = el("input", "input-outros");
   inputOutros.type = "text";
   inputOutros.placeholder = "Digite outra opção...";
+  inputOutros.id = "input-custom-subtipo";
   
   const btnOk = el("button", "btn-ok", "OK");
   btnOk.type = "button";
@@ -688,8 +610,8 @@ function counterField(label, value, onChange){
   const minus = el("button","counter-btn","−"); minus.type="button";
   const val = el("span","counter-val", String(value).padStart(2,"0"));
   const plus = el("button","counter-btn","+"); plus.type="button";
-  minus.onclick=()=> { onChange(Math.max(0,value-1)); };
-  plus.onclick=()=> { onChange(value+1); };
+  minus.onclick=()=>onChange(Math.max(0,value-1));
+  plus.onclick=()=>onChange(value+1);
   ctrl.append(minus,val,plus);
   row.appendChild(ctrl);
   return row;
@@ -719,7 +641,8 @@ function renderPerguntasScreen(){
   const nav = renderNavButtons(
     () => { state.screen = 2; render(); window.scrollTo(0, 0); },
     () => { 
-      if(!state.geradoEm) state.geradoEm = new Date(); 
+      state.geradoEm = new Date(); 
+      if(!state.coordenadas) capturarLocalizacaoAutomatica();
       state.screen = 4; 
       render(); 
       window.scrollTo(0,0); 
@@ -749,13 +672,9 @@ function renderPergunta(p){
     inputBlockText.type = "text";
     inputBlockText.placeholder = "Observação / Detalhes deste bloco...";
     inputBlockText.value = r.observacao || "";
-    inputBlockText.oninput = (e) => { 
-      r.observacao = e.target.value; 
-      salvarEstado();
-    };
+    inputBlockText.oninput = (e) => { r.observacao = e.target.value; };
     box.appendChild(labeledField("Observações do Bloco", inputBlockText));
   }
-
   return box;
 }
 
@@ -809,7 +728,6 @@ function renderMaterialBlock(p, box){
     b.onclick=()=>{
       if(active) delete r.classes[cl.nome];
       else r.classes[cl.nome] = [];
-      salvarEstado();
       render();
     };
     clBox.appendChild(b);
@@ -821,7 +739,6 @@ function renderMaterialBlock(p, box){
           const arr = r.classes[cl.nome];
           const i = arr.indexOf(it);
           if(i>=0) arr.splice(i,1); else arr.push(it);
-          salvarEstado();
         }));
       clBox.appendChild(itemsBox);
     }
@@ -843,7 +760,6 @@ function renderGruposBlock(p, box){
         const arr = r.groups[g.nome];
         const i = arr.indexOf(op);
         if(i>=0) arr.splice(i,1); else arr.push(op);
-        salvarEstado();
       }));
   });
   return box;
@@ -854,11 +770,7 @@ function renderContadoresBlock(p, box){
   const r = getResp(p.key);
   if(!r.counts) r.counts = {};
   p.options.forEach(op=>{
-    box.appendChild(counterField(op, r.counts[op]||0, v=>{
-      r.counts[op]=v; 
-      salvarEstado();
-      render();
-    }));
+    box.appendChild(counterField(op, r.counts[op]||0, v=>{r.counts[op]=v; render();}));
   });
   return box;
 }
@@ -876,18 +788,14 @@ function renderVitimasBlock(box){
   const semBtn = el("button","grid-btn full-width"+(r.sem?" selected":""));
   semBtn.type="button";
   semBtn.appendChild(el("span","grid-btn-text","Sem vítimas"));
-  semBtn.onclick=()=>{ 
-    r.sem=!r.sem; 
-    salvarEstado();
-    render(); 
-  };
+  semBtn.onclick=()=>{ r.sem=!r.sem; render(); };
   box.appendChild(semBtn);
   if(!r.sem){
-    box.appendChild(counterField("Quantidade de Vítimas", r.total||0, v=>{r.total=v; salvarEstado(); render();}));
-    box.appendChild(counterFieldColored("Verdes", "var(--green)", r.verde||0, v=>{r.verde=v; salvarEstado(); render();}));
-    box.appendChild(counterFieldColored("Amarelas", "var(--amber)", r.amarelo||0, v=>{r.amarelo=v; salvarEstado(); render();}));
-    box.appendChild(counterFieldColored("Vermelhas", "var(--red)", r.vermelho||0, v=>{r.vermelho=v; salvarEstado(); render();}));
-    box.appendChild(counterFieldColored("Cinzas", "var(--text-dim)", r.cinza||0, v=>{r.cinza=v; salvarEstado(); render();}));
+    box.appendChild(counterField("Quantidade de Vítimas", r.total||0, v=>{r.total=v; render();}));
+    box.appendChild(counterFieldColored("Verdes", "var(--green)", r.verde||0, v=>{r.verde=v; render();}));
+    box.appendChild(counterFieldColored("Amarelas", "var(--amber)", r.amarelo||0, v=>{r.amarelo=v; render();}));
+    box.appendChild(counterFieldColored("Vermelhas", "var(--red)", r.vermelho||0, v=>{r.vermelho=v; render();}));
+    box.appendChild(counterFieldColored("Cinzas", "var(--text-dim)", r.cinza||0, v=>{r.cinza=v; render();}));
   }
   return box;
 }
@@ -914,9 +822,8 @@ function renderRecursosBlock(p, box){
       const i=r.tipos.indexOf(op);
       if(i>=0) r.tipos.splice(i,1); else r.tipos.push(op);
       r.viaturas = r.tipos.length;
-      salvarEstado();
     }));
-  box.appendChild(counterField("Efetivo empregado", r.efetivo||0, v=>{r.efetivo=v; salvarEstado(); render();}));
+  box.appendChild(counterField("Efetivo empregado", r.efetivo||0, v=>{r.efetivo=v; render();}));
   return box;
 }
 
@@ -927,15 +834,12 @@ function renderTextoBlock(p, box){
   ta.rows = 4;
   ta.placeholder = "Digite observações adicionais...";
   ta.value = r.texto || "";
-  ta.oninput = (e)=>{ 
-    r.texto = e.target.value; 
-    salvarEstado();
-  };
+  ta.oninput = (e)=>{ r.texto = e.target.value; };
   box.appendChild(ta);
   return box;
 }
 
-/* ---------- Geração do Informe Padronizado ---------- */
+/* ---------- Geração do Informe (PADRONIZADO PARA A CENTRAL) ---------- */
 
 const SEPARADOR = "--------------------------------";
 
@@ -948,86 +852,86 @@ function gerarTextoInforme(){
 
   const cab = ["*AVALIAÇÃO DA CENA*"];
   const agora = state.geradoEm || new Date();
+  
+  // PADRONIZAÇÃO RÍGIDA: As chaves sempre existem e possuem fallback para "NÃO INFORMADO"
   cab.push("*DATA:* " + agora.toLocaleDateString("pt-BR"));
   cab.push("*HORA:* " + agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) + " (coleta das informações)");
-  if(state.coordenadas.trim()) cab.push("*COORDENADAS:* " + state.coordenadas.trim());
-  if(state.endereco.trim()) cab.push("*ENDEREÇO:* " + state.endereco.trim());
-  cab.push("*MISSÃO:* " + (t ? (t.missao || "") : ""));
+  cab.push("*COORDENADAS:* " + (state.coordenadas.trim() || "NÃO INFORMADA"));
+  cab.push("*ENDEREÇO:* " + (state.endereco.trim() || "NÃO INFORMADO"));
+  cab.push("*MISSÃO:* " + (t.missao || "NÃO INFORMADA"));
   blocos.push(cab);
 
-  if (t) {
-    const loc = [];
-    loc.push("TIPO: " + t.nome.toUpperCase());
+  const loc = [];
+  loc.push("TIPO: " + t.nome.toUpperCase());
 
-    if(t.quantidadeVeiculos){
-      if(state.veiculosSelecionados.length > 0){
-        loc.push("SUBTIPO: " + state.veiculosSelecionados.join(" x "));
-      }
+  if(t.quantidadeVeiculos){
+    if(state.veiculosSelecionados.length > 0){
+      loc.push("SUBTIPO: " + state.veiculosSelecionados.join(" x "));
     } else {
-      let listaSubtipos = subs.map(s => s.nome).concat(state.subtiposAdicionais);
-      if(listaSubtipos.length > 0){
-        loc.push("SUBTIPO: " + listaSubtipos.join(", "));
-      }
+      loc.push("SUBTIPO: NÃO INFORMADO");
     }
-
-    if(subs.some(s=>s.residencial)){
-      const rd = state.residencial;
-      if(rd.tipoImovel) loc.push("Edificação: " + rd.tipoImovel);
-      if(rd.andar>0) loc.push("Andar: " + rd.andar);
-      if(rd.pavimentos>0) loc.push("Pavimentos: " + pad2(rd.pavimentos));
-      if(rd.pavimentoFogo>0) loc.push("Fogo no pavimento: " + pad2(rd.pavimentoFogo));
-      if(rd.comodos.length) loc.push("Cômodo(s) com fogo: " + rd.comodos.join(", "));
+  } else {
+    let listaSubtipos = subs.map(s => s.nome).concat(state.subtiposAdicionais);
+    if(listaSubtipos.length > 0){
+      loc.push("SUBTIPO: " + listaSubtipos.join(", "));
+    } else {
+      loc.push("SUBTIPO: NÃO INFORMADO");
     }
-    blocos.push(loc);
-
-    const sit = [];
-    t.perguntas.forEach(p=>{
-      const r = state.respostas[p.key];
-      if(!r) return;
-      let linhaMsg = "";
-      
-      if(p.type==="checkbox" && p.key==="situacao" && r.opts && r.opts.length){
-        linhaMsg = "SITUAÇÃO ENCONTRADA: " + r.opts.join(", ");
-      } else if(p.type==="material" && r.classes){
-        const partes = Object.entries(r.classes)
-          .filter(([k,itens])=>itens.length>0)
-          .map(([k,itens])=>k+" — "+itens.join(", "));
-        if(partes.length) linhaMsg = "MATERIAL QUEIMANDO: " + partes.join(" | ");
-      } else if(p.type==="checkbox" && p.key==="bloqueio" && r.opts && r.opts.length){
-        linhaMsg = "BLOQUEIO DA VIA: " + r.opts.join(", ");
-      } else if(p.type==="checkbox" && p.key==="sentido" && r.opts && r.opts.length){
-        linhaMsg = "SENTIDO: " + r.opts.join(", ");
-      } else if(p.type==="checkbox" && p.key==="materialTransportado" && r.opts && r.opts.length){
-        linhaMsg = "MATERIAL TRANSPORTADO: " + r.opts.join(", ");
-      } else if(p.type==="grupos"){
-        const partes = p.grupos
-          .map(g=>({nome:g.nome, valores:(r.groups && r.groups[g.nome]) || []}))
-          .filter(x=>x.valores.length>0)
-          .map(x=>x.nome + ": " + x.valores.join(", "));
-        if(partes.length) {
-          linhaMsg = "INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n");
-        }
-      } else if(p.type==="contadores" && r.counts){
-        const entries = Object.entries(r.counts).filter(([k,v])=>v>0);
-        if(entries.length) {
-          linhaMsg = "FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n");
-        }
-      }
-
-      const ignorarNoLoop = ["vitimas", "situacaoVitimas", "recursos", "observacoes"];
-      if (!ignorarNoLoop.includes(p.key)) {
-        const temObs = r.observacao && r.observacao.trim();
-        if(linhaMsg) {
-          if(temObs) linhaMsg += " | " + r.observacao.trim();
-          sit.push(linhaMsg);
-        } else if (temObs) {
-          let fallbackLabel = p.label ? p.label.toUpperCase() : p.key.toUpperCase();
-          sit.push(fallbackLabel + ": " + r.observacao.trim());
-        }
-      }
-    });
-    blocos.push(sit);
   }
+
+  if(subs.some(s=>s.residencial)){
+    const rd = state.residencial;
+    if(rd.tipoImovel) loc.push("Edificação: " + rd.tipoImovel);
+    if(rd.andar>0) loc.push("Andar: " + rd.andar);
+    if(rd.pavimentos>0) loc.push("Pavimentos: " + pad2(rd.pavimentos));
+    if(rd.pavimentoFogo>0) loc.push("Fogo no pavimento: " + pad2(rd.pavimentoFogo));
+    if(rd.comodos.length) loc.push("Cômodo(s) com fogo: " + rd.comodos.join(", "));
+  }
+  blocos.push(loc);
+
+  const sit = [];
+  t.perguntas.forEach(p=>{
+    const r = state.respostas[p.key];
+    if(!r) return;
+    let linhaMsg = "";
+    
+    if(p.type==="checkbox" && p.key==="situacao" && r.opts && r.opts.length){
+      linhaMsg = "SITUAÇÃO ENCONTRADA: " + r.opts.join(", ");
+    } else if(p.type==="material" && r.classes){
+      const partes = Object.entries(r.classes)
+        .filter(([k,itens])=>itens.length>0)
+        .map(([k,itens])=>k+" — "+itens.join(", "));
+      if(partes.length) linhaMsg = "MATERIAL QUEIMANDO: " + partes.join(" | ");
+    } else if(p.type==="checkbox" && p.key==="bloqueio" && r.opts && r.opts.length){
+      linhaMsg = "BLOQUEIO DA VIA: " + r.opts.join(", ");
+    } else if(p.type==="checkbox" && p.key==="sentido" && r.opts && r.opts.length){
+      linhaMsg = "SENTIDO: " + r.opts.join(", ");
+    } else if(p.type==="checkbox" && p.key==="materialTransportado" && r.opts && r.opts.length){
+      linhaMsg = "MATERIAL TRANSPORTADO: " + r.opts.join(", ");
+    } else if(p.type==="grupos"){
+      const partes = p.grupos
+        .map(g=>({nome:g.nome, valores:(r.groups && r.groups[g.nome]) || []}))
+        .filter(x=>x.valores.length>0)
+        .map(x=>x.nome + ": " + x.valores.join(", "));
+      if(partes.length) linhaMsg = "INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n");
+    } else if(p.type==="contadores" && r.counts){
+      const entries = Object.entries(r.counts).filter(([k,v])=>v>0);
+      if(entries.length) linhaMsg = "FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n");
+    }
+
+    const ignorarNoLoop = ["vitimas", "situacaoVitimas", "recursos", "observacoes"];
+    if (!ignorarNoLoop.includes(p.key)) {
+      const temObs = r.observacao && r.observacao.trim();
+      if(linhaMsg) {
+        if(temObs) linhaMsg += " | " + r.observacao.trim();
+        sit.push(linhaMsg);
+      } else if (temObs) {
+        let fallbackLabel = p.label ? p.label.toUpperCase() : p.key.toUpperCase();
+        sit.push(fallbackLabel + ": " + r.observacao.trim());
+      }
+    }
+  });
+  blocos.push(sit);
 
   const vit = [];
   const rv = state.respostas["vitimas"];
@@ -1112,6 +1016,25 @@ function renderInformeScreen(){
   const c = el("div","screen");
   c.appendChild(el("h1","screen-title","Informe Operacional"));
 
+  if(!state.coordenadas) {
+    const alertBox = el("div", "geo-alert-box");
+    
+    const title = el("div", "geo-alert-title", "📍 Localização não capturada");
+    const desc = el("div", "geo-alert-desc", 
+      state.geoMensagem || "Por favor, ligue a Localização (GPS) do seu aparelho e permita o acesso ao navegador para incluir endereço e coordenadas no informe."
+    );
+    
+    const btnRetry = el("button", "btn-geo", state.buscandoGeo ? "Buscando localização..." : "Ligar/Tentar Obter Localização");
+    btnRetry.type = "button";
+    btnRetry.disabled = state.buscandoGeo;
+    btnRetry.onclick = () => {
+      capturarLocalizacaoAutomatica();
+    };
+
+    alertBox.append(title, desc, btnRetry);
+    c.appendChild(alertBox);
+  }
+
   const ticket = el("div","ticket");
   const pre = el("pre","ticket-text");
   pre.textContent = gerarTextoInforme();
@@ -1168,11 +1091,16 @@ function renderInformeScreen(){
 
 /* ---------- Inicialização ---------- */
 
-carregarEstado();
-render();
+carregarDados(); // Resgata dados do localstorage ao abrir
+render(); // Monta a tela na etapa atual salva
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
     navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
   });
+}
+
+// Inicializa a captura GPS com precisão máxima como prioridade desde a primeira tela
+if (!state.coordenadas && !state.buscandoGeo) {
+  capturarLocalizacaoAutomatica();
 }
