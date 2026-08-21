@@ -1,42 +1,8 @@
 /* =========================================================
    AVALIAÇÃO DA CENA — App de Informe Operacional
-   (Com Persistência de Dados no localStorage)
    ========================================================= */
 
-/* ---------- Salvaguarda de Dados (LocalStorage) ---------- */
-
-const STORAGE_KEY = "app_informe_operacional_data";
-
-function salvarEstado() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (e) {
-    console.error("Erro ao salvar no localStorage:", e);
-  }
-}
-
-function carregarEstado() {
-  try {
-    const salvo = localStorage.getItem(STORAGE_KEY);
-    if (salvo) {
-      const parsed = JSON.parse(salvo);
-      // Mescla o estado salvo com o inicial, garantindo que novas chaves existam
-      Object.assign(state, parsed);
-    }
-  } catch (e) {
-    console.error("Erro ao carregar do localStorage:", e);
-  }
-}
-
-/* ---------- Modificação na função de renderização para forçar salvamento ---------- */
-
-// Wrapper para garantir salvamento em toda atualização de UI
-function renderComSalvamento() {
-  salvarEstado();
-  render();
-}
-
-/* ---------- Blocos de perguntas reutilizáveis (Mantido original) ---------- */
+/* ---------- Blocos de perguntas reutilizáveis ---------- */
 
 const MATERIAL_EDIFICACOES = {
   label: "Tipo de Material Queimando",
@@ -172,7 +138,9 @@ function obterTodosTipos(){
   return todos;
 }
 
-/* ---------- Estado Inicial ---------- */
+/* ---------- Estado ---------- */
+
+const STORAGE_KEY = "informe_operacional_state_v1";
 
 const state = {
   screen: 1,
@@ -188,48 +156,86 @@ const state = {
   buscandoGeo: false,
 };
 
+function salvarEstado(){
+  try {
+    const dataToSave = {
+      screen: state.screen,
+      tipoId: state.tipoId,
+      subtipoIds: state.subtipoIds,
+      subtiposAdicionais: state.subtiposAdicionais,
+      veiculosSelecionados: state.veiculosSelecionados,
+      residencial: state.residencial,
+      respostas: state.respostas,
+      endereco: state.endereco,
+      coordenadas: state.coordenadas,
+      geradoEm: state.geradoEm ? state.geradoEm.toISOString() : null
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+  } catch(e) {
+    console.error("Erro ao salvar no localStorage", e);
+  }
+}
+
+function carregarEstado(){
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if(saved){
+      const parsed = JSON.parse(saved);
+      state.screen = parsed.screen || 1;
+      state.tipoId = parsed.tipoId || null;
+      state.subtipoIds = parsed.subtipoIds || [];
+      state.subtiposAdicionais = parsed.subtiposAdicionais || [];
+      state.veiculosSelecionados = parsed.veiculosSelecionados || [];
+      state.residencial = parsed.residencial || { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] };
+      state.respostas = parsed.respostas || {};
+      state.endereco = parsed.endereco || "";
+      state.coordenadas = parsed.coordenadas || "";
+      state.geradoEm = parsed.geradoEm ? new Date(parsed.geradoEm) : null;
+    }
+  } catch(e) {
+    console.error("Erro ao carregar do localStorage", e);
+  }
+}
+
 function tipoAtual(){ return obterTodosTipos().find(t=>t.id===state.tipoId); }
 function subtiposSelecionados(){ const t=tipoAtual(); return t ? t.subtipos.filter(s=>state.subtipoIds.includes(s.id)) : []; }
 function algumSubtipoResidencial(){ return subtiposSelecionados().some(s=>s.residencial); }
 function toggleSubtipo(id){
   const i = state.subtipoIds.indexOf(id);
   if(i>=0) state.subtipoIds.splice(i,1); else state.subtipoIds.push(id);
+  salvarEstado();
 }
 
 function resetForm(){
-  // Limpar localStorage
   localStorage.removeItem(STORAGE_KEY);
-  // Resetar o estado em memória (copiando propriedades para manter referência do objeto)
-  Object.assign(state, {
-    screen: 1,
-    tipoId: null,
-    subtipoIds: [],
-    subtiposAdicionais: [],
-    veiculosSelecionados: [],
-    residencial: { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] },
-    respostas: {},
-    endereco: "",
-    coordenadas: "",
-    geradoEm: null,
-    buscandoGeo: false,
-  });
-  renderComSalvamento();
+  state.screen = 1;
+  state.tipoId = null;
+  state.subtipoIds = [];
+  state.subtiposAdicionais = [];
+  state.veiculosSelecionados = [];
+  state.residencial = { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] };
+  state.respostas = {};
+  state.geradoEm = null;
+  state.endereco = "";
+  state.coordenadas = "";
+  render();
   window.scrollTo(0,0);
 }
 
-/* ---------- Coleta Automática de Geolocalização (Mantido original) ---------- */
+/* ---------- Coleta Automática de Geolocalização ---------- */
 
 function capturarLocalizacaoAutomatica() {
   if (!("geolocation" in navigator)) {
     state.geoStatus = "erro";
     state.geoMensagem = "Seu navegador não suporta geolocalização.";
     refreshTicketPre();
+    salvarEstado();
     return;
   }
 
   state.buscandoGeo = true;
   state.geoStatus = "buscando";
-  renderComSalvamento();
+  render();
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
@@ -259,18 +265,20 @@ function capturarLocalizacaoAutomatica() {
       } catch(e) {
       } finally {
         state.buscandoGeo = false;
-        renderComSalvamento();
+        salvarEstado();
+        render();
       }
     },
     (err) => {
       state.buscandoGeo = false;
       state.geoStatus = "erro";
       if (err.code === err.PERMISSION_DENIED) {
-        state.geoMensagem = "Permissão de localização negada. Ative o GPS.";
+        state.geoMensagem = "Permissão de localização negada. Ative o GPS nas configurações do dispositivo/navegador.";
       } else {
-        state.geoMensagem = "Não foi possível obter a localização.";
+        state.geoMensagem = "Não foi possível obter a localização. Por favor, ative o GPS e tente novamente.";
       }
-      renderComSalvamento();
+      salvarEstado();
+      render();
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
   );
@@ -288,7 +296,7 @@ function toggleCheckbox(key, opt){
   if(!r.opts) r.opts = [];
   const i = r.opts.indexOf(opt);
   if(i>=0) r.opts.splice(i,1); else r.opts.push(opt);
-  salvarEstado(); // Salvar a cada clique
+  salvarEstado();
 }
 
 function isChecked(key, opt){
@@ -304,7 +312,10 @@ function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = 
   if (onBack) {
     const btnBack = el("button", "btn-blue", "Voltar");
     btnBack.type = "button";
-    btnBack.onclick = () => { onBack(); salvarEstado(); };
+    btnBack.onclick = () => {
+      onBack();
+      salvarEstado();
+    };
     container.appendChild(btnBack);
   }
 
@@ -312,7 +323,10 @@ function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = 
     const btnNext = el("button", "btn-primary", nextText);
     btnNext.type = "button";
     btnNext.disabled = nextDisabled;
-    btnNext.onclick = () => { onNext(); salvarEstado(); };
+    btnNext.onclick = () => {
+      onNext();
+      salvarEstado();
+    };
     container.appendChild(btnNext);
   }
 
@@ -331,6 +345,7 @@ function render(){
   else if(state.screen===3) wrap.appendChild(renderPerguntasScreen());
   else if(state.screen===4) wrap.appendChild(renderInformeScreen());
   app.appendChild(wrap);
+  salvarEstado();
 }
 
 function el(tag, className, text){
@@ -364,7 +379,8 @@ function renderTipoScreen(){
         state.veiculosSelecionados=[];
         state.respostas={}; 
         state.screen=2; 
-        renderComSalvamento();
+        salvarEstado();
+        render(); 
         window.scrollTo(0,0); 
       };
       list.appendChild(btn);
@@ -399,7 +415,8 @@ function renderSubtipoScreen(){
       btnClear.type = "button";
       btnClear.onclick = () => {
         state.veiculosSelecionados = [];
-        renderComSalvamento();
+        salvarEstado();
+        render();
       };
       yellowBox.appendChild(btnClear);
     }
@@ -420,7 +437,8 @@ function renderSubtipoScreen(){
       }
       btn.onclick = ()=>{
         state.veiculosSelecionados.push(s.nome);
-        renderComSalvamento();
+        salvarEstado();
+        render();
       };
       list.appendChild(btn);
     } else {
@@ -428,7 +446,7 @@ function renderSubtipoScreen(){
       const btn = el("button","opt-row"+(selected?" selected":""));
       btn.type = "button";
       btn.appendChild(el("span","btn-label-clean", s.nome));
-      btn.onclick = ()=>{ toggleSubtipo(s.id); renderComSalvamento(); };
+      btn.onclick = ()=>{ toggleSubtipo(s.id); render(); };
       list.appendChild(btn);
     }
   });
@@ -445,7 +463,8 @@ function renderSubtipoScreen(){
       btn.appendChild(el("span","count-badge", `+${count}`));
       btn.onclick = ()=>{
         state.veiculosSelecionados.push(customName);
-        renderComSalvamento();
+        salvarEstado();
+        render();
       };
       list.appendChild(btn);
     });
@@ -456,7 +475,8 @@ function renderSubtipoScreen(){
       btn.appendChild(el("span","btn-label-clean", customName));
       btn.onclick = ()=>{
         state.subtiposAdicionais.splice(idx, 1);
-        renderComSalvamento();
+        salvarEstado();
+        render();
       };
       list.appendChild(btn);
     });
@@ -487,7 +507,8 @@ function renderSubtipoScreen(){
           state.subtiposAdicionais.push(val);
         }
       }
-      renderComSalvamento();
+      salvarEstado();
+      render();
     }
   };
 
@@ -513,8 +534,8 @@ function renderSubtipoScreen(){
     : (state.subtipoIds.length === 0 && state.subtiposAdicionais.length === 0);
 
   const nav = renderNavButtons(
-    () => { state.screen = 1; renderComSalvamento(); window.scrollTo(0, 0); },
-    () => { state.screen = 3; renderComSalvamento(); window.scrollTo(0, 0); },
+    () => { state.screen = 1; render(); window.scrollTo(0, 0); },
+    () => { state.screen = 3; render(); window.scrollTo(0, 0); },
     "Avançar",
     isNextDisabled
   );
@@ -531,14 +552,14 @@ function renderResidencialDetalhes(){
   ["Casa","Apartamento"].forEach(op=>{
     const b = el("button","chip small"+(state.residencial.tipoImovel===op?" selected":""),op);
     b.type="button";
-    b.onclick=()=>{state.residencial.tipoImovel=op; renderComSalvamento();};
+    b.onclick=()=>{state.residencial.tipoImovel=op; salvarEstado(); render();};
     tipoRow.appendChild(b);
   });
   box.appendChild(labeledField("Tipo de Imóvel", tipoRow));
 
-  box.appendChild(counterField("Andar", state.residencial.andar, v=>{state.residencial.andar=v; renderComSalvamento();}));
-  box.appendChild(counterField("Pavimentos", state.residencial.pavimentos, v=>{state.residencial.pavimentos=v; renderComSalvamento();}));
-  box.appendChild(counterField("Fogo em qual Pavimento", state.residencial.pavimentoFogo, v=>{state.residencial.pavimentoFogo=v; renderComSalvamento();}));
+  box.appendChild(counterField("Andar", state.residencial.andar, v=>{state.residencial.andar=v; salvarEstado(); render();}));
+  box.appendChild(counterField("Pavimentos", state.residencial.pavimentos, v=>{state.residencial.pavimentos=v; salvarEstado(); render();}));
+  box.appendChild(counterField("Fogo em qual Pavimento", state.residencial.pavimentoFogo, v=>{state.residencial.pavimentoFogo=v; salvarEstado(); render();}));
 
   const comodoRow = el("div","chip-row wrap");
   ["Sala","Cozinha","Quarto","Banheiro","Área externa"].forEach(op=>{
@@ -548,7 +569,8 @@ function renderResidencialDetalhes(){
     b.onclick=()=>{
       const i = state.residencial.comodos.indexOf(op);
       if(i>=0) state.residencial.comodos.splice(i,1); else state.residencial.comodos.push(op);
-      renderComSalvamento();
+      salvarEstado();
+      render();
     };
     comodoRow.appendChild(b);
   });
@@ -573,8 +595,8 @@ function counterField(label, value, onChange){
   const minus = el("button","counter-btn","−"); minus.type="button";
   const val = el("span","counter-val", String(value).padStart(2,"0"));
   const plus = el("button","counter-btn","+"); plus.type="button";
-  minus.onclick=()=>{onChange(Math.max(0,value-1)); salvarEstado();};
-  plus.onclick=()=>{onChange(value+1); salvarEstado();};
+  minus.onclick=()=>onChange(Math.max(0,value-1));
+  plus.onclick=()=>onChange(value+1);
   ctrl.append(minus,val,plus);
   row.appendChild(ctrl);
   return row;
@@ -602,12 +624,13 @@ function renderPerguntasScreen(){
   });
 
   const nav = renderNavButtons(
-    () => { state.screen = 2; renderComSalvamento(); window.scrollTo(0, 0); },
+    () => { state.screen = 2; render(); window.scrollTo(0, 0); },
     () => { 
-      state.geradoEm = new Date(); 
+      if(!state.geradoEm) state.geradoEm = new Date(); 
       if(!state.coordenadas) capturarLocalizacaoAutomatica();
       state.screen = 4; 
-      renderComSalvamento(); 
+      salvarEstado();
+      render(); 
       window.scrollTo(0,0); 
     },
     "GERAR INFORME OPERACIONAL"
@@ -628,7 +651,6 @@ function renderPergunta(p){
   else if(p.type==="recursos") renderRecursosBlock(p, box);
   else if(p.type==="texto") renderTextoBlock(p, box);
 
-  /* Campo de texto de observação abaixo de cada bloco de perguntas */
   if (p.type !== "texto") {
     const key = p.key || (p.type === "vitimas" ? "vitimas" : p.type === "recursos" ? "recursos" : "bloco");
     const r = getResp(key);
@@ -637,8 +659,8 @@ function renderPergunta(p){
     inputBlockText.placeholder = "Observação / Detalhes deste bloco...";
     inputBlockText.value = r.observacao || "";
     inputBlockText.oninput = (e) => { 
-        r.observacao = e.target.value; 
-        salvarEstado();
+      r.observacao = e.target.value; 
+      salvarEstado();
     };
     box.appendChild(labeledField("Observações do Bloco", inputBlockText));
   }
@@ -665,7 +687,11 @@ function gridOptionsNoIcons(options, isSelectedFn, onToggle, colorFn){
       if(c) span.style.color = c;
     }
     b.appendChild(span);
-    b.onclick=()=>{ onToggle(op); renderComSalvamento(); };
+    b.onclick=()=>{ 
+      onToggle(op); 
+      salvarEstado();
+      render(); 
+    };
     grid.appendChild(b);
   });
   return grid;
@@ -696,7 +722,8 @@ function renderMaterialBlock(p, box){
     b.onclick=()=>{
       if(active) delete r.classes[cl.nome];
       else r.classes[cl.nome] = [];
-      renderComSalvamento();
+      salvarEstado();
+      render();
     };
     clBox.appendChild(b);
     if(active){
@@ -707,6 +734,7 @@ function renderMaterialBlock(p, box){
           const arr = r.classes[cl.nome];
           const i = arr.indexOf(it);
           if(i>=0) arr.splice(i,1); else arr.push(it);
+          salvarEstado();
         }));
       clBox.appendChild(itemsBox);
     }
@@ -728,6 +756,7 @@ function renderGruposBlock(p, box){
         const arr = r.groups[g.nome];
         const i = arr.indexOf(op);
         if(i>=0) arr.splice(i,1); else arr.push(op);
+        salvarEstado();
       }));
   });
   return box;
@@ -738,7 +767,11 @@ function renderContadoresBlock(p, box){
   const r = getResp(p.key);
   if(!r.counts) r.counts = {};
   p.options.forEach(op=>{
-    box.appendChild(counterField(op, r.counts[op]||0, v=>{r.counts[op]=v; renderComSalvamento();}));
+    box.appendChild(counterField(op, r.counts[op]||0, v=>{
+      r.counts[op]=v; 
+      salvarEstado();
+      render();
+    }));
   });
   return box;
 }
@@ -756,14 +789,18 @@ function renderVitimasBlock(box){
   const semBtn = el("button","grid-btn full-width"+(r.sem?" selected":""));
   semBtn.type="button";
   semBtn.appendChild(el("span","grid-btn-text","Sem vítimas"));
-  semBtn.onclick=()=>{ r.sem=!r.sem; renderComSalvamento(); };
+  semBtn.onclick=()=>{ 
+    r.sem=!r.sem; 
+    salvarEstado();
+    render(); 
+  };
   box.appendChild(semBtn);
   if(!r.sem){
-    box.appendChild(counterField("Quantidade de Vítimas", r.total||0, v=>{r.total=v; renderComSalvamento();}));
-    box.appendChild(counterFieldColored("Verdes", "var(--green)", r.verde||0, v=>{r.verde=v; renderComSalvamento();}));
-    box.appendChild(counterFieldColored("Amarelas", "var(--amber)", r.amarelo||0, v=>{r.amarelo=v; renderComSalvamento();}));
-    box.appendChild(counterFieldColored("Vermelhas", "var(--red)", r.vermelho||0, v=>{r.vermelho=v; renderComSalvamento();}));
-    box.appendChild(counterFieldColored("Cinzas", "var(--text-dim)", r.cinza||0, v=>{r.cinza=v; renderComSalvamento();}));
+    box.appendChild(counterField("Quantidade de Vítimas", r.total||0, v=>{r.total=v; salvarEstado(); render();}));
+    box.appendChild(counterFieldColored("Verdes", "var(--green)", r.verde||0, v=>{r.verde=v; salvarEstado(); render();}));
+    box.appendChild(counterFieldColored("Amarelas", "var(--amber)", r.amarelo||0, v=>{r.amarelo=v; salvarEstado(); render();}));
+    box.appendChild(counterFieldColored("Vermelhas", "var(--red)", r.vermelho||0, v=>{r.vermelho=v; salvarEstado(); render();}));
+    box.appendChild(counterFieldColored("Cinzas", "var(--text-dim)", r.cinza||0, v=>{r.cinza=v; salvarEstado(); render();}));
   }
   return box;
 }
@@ -790,8 +827,9 @@ function renderRecursosBlock(p, box){
       const i=r.tipos.indexOf(op);
       if(i>=0) r.tipos.splice(i,1); else r.tipos.push(op);
       r.viaturas = r.tipos.length;
+      salvarEstado();
     }));
-  box.appendChild(counterField("Efetivo empregado", r.efetivo||0, v=>{r.efetivo=v; renderComSalvamento();}));
+  box.appendChild(counterField("Efetivo empregado", r.efetivo||0, v=>{r.efetivo=v; salvarEstado(); render();}));
   return box;
 }
 
@@ -803,14 +841,14 @@ function renderTextoBlock(p, box){
   ta.placeholder = "Digite observações adicionais...";
   ta.value = r.texto || "";
   ta.oninput = (e)=>{ 
-      r.texto = e.target.value; 
-      salvarEstado();
+    r.texto = e.target.value; 
+    salvarEstado();
   };
   box.appendChild(ta);
   return box;
 }
 
-/* ---------- Geração do Informe (Mantido original) ---------- */
+/* ---------- Geração do Informe ---------- */
 
 const SEPARADOR = "--------------------------------";
 
@@ -818,6 +856,7 @@ function pad2(n){ return String(n).padStart(2,"0"); }
 
 function gerarTextoInforme(){
   const t = tipoAtual();
+  if(!t) return "";
   const subs = subtiposSelecionados();
   const blocos = [];
 
@@ -879,16 +918,12 @@ function gerarTextoInforme(){
         .filter(x=>x.valores.length>0)
         .map(x=>x.nome + ": " + x.valores.join(", "));
       if(partes.length) {
-        linhaMsg = "INFORMAÇÕES ADICIONAIS:
-" + partes.join("
-");
+        linhaMsg = "INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n");
       }
     } else if(p.type==="contadores" && r.counts){
       const entries = Object.entries(r.counts).filter(([k,v])=>v>0);
       if(entries.length) {
-        linhaMsg = "FERRAMENTAS:
-" + entries.map(([k,v])=> k + " (" + v + ")").join("
-");
+        linhaMsg = "FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n");
       }
     }
 
@@ -978,10 +1013,7 @@ function gerarTextoInforme(){
   blocos.push(obs);
 
   const naoVazios = blocos.filter(b=>b.length>0);
-  return naoVazios.map(b=>b.join("
-")).join("
-"+SEPARADOR+"
-");
+  return naoVazios.map(b=>b.join("\n")).join("\n"+SEPARADOR+"\n");
 }
 
 /* ---------- Tela 4: Informe ---------- */
@@ -1061,7 +1093,7 @@ function renderInformeScreen(){
   c.appendChild(actions);
 
   const nav = renderNavButtons(
-    () => { state.screen = 3; renderComSalvamento(); window.scrollTo(0, 0); },
+    () => { state.screen = 3; render(); window.scrollTo(0, 0); },
     null
   );
   c.appendChild(nav);
@@ -1071,9 +1103,8 @@ function renderInformeScreen(){
 
 /* ---------- Inicialização ---------- */
 
-// Carregar estado ao iniciar
 carregarEstado();
-renderComSalvamento();
+render();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
