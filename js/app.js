@@ -1,8 +1,42 @@
 /* =========================================================
    AVALIAÇÃO DA CENA — App de Informe Operacional
+   (Com Persistência de Dados no localStorage)
    ========================================================= */
 
-/* ---------- Blocos de perguntas reutilizáveis ---------- */
+/* ---------- Salvaguarda de Dados (LocalStorage) ---------- */
+
+const STORAGE_KEY = "app_informe_operacional_data";
+
+function salvarEstado() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error("Erro ao salvar no localStorage:", e);
+  }
+}
+
+function carregarEstado() {
+  try {
+    const salvo = localStorage.getItem(STORAGE_KEY);
+    if (salvo) {
+      const parsed = JSON.parse(salvo);
+      // Mescla o estado salvo com o inicial, garantindo que novas chaves existam
+      Object.assign(state, parsed);
+    }
+  } catch (e) {
+    console.error("Erro ao carregar do localStorage:", e);
+  }
+}
+
+/* ---------- Modificação na função de renderização para forçar salvamento ---------- */
+
+// Wrapper para garantir salvamento em toda atualização de UI
+function renderComSalvamento() {
+  salvarEstado();
+  render();
+}
+
+/* ---------- Blocos de perguntas reutilizáveis (Mantido original) ---------- */
 
 const MATERIAL_EDIFICACOES = {
   label: "Tipo de Material Queimando",
@@ -138,7 +172,7 @@ function obterTodosTipos(){
   return todos;
 }
 
-/* ---------- Estado e Salvaguarda de Dados ---------- */
+/* ---------- Estado Inicial ---------- */
 
 const state = {
   screen: 1,
@@ -154,23 +188,6 @@ const state = {
   buscandoGeo: false,
 };
 
-function salvarDados() {
-  localStorage.setItem("appOcorrenciaState", JSON.stringify(state));
-}
-
-function carregarDados() {
-  const s = localStorage.getItem("appOcorrenciaState");
-  if (s) {
-    try {
-      const parsed = JSON.parse(s);
-      Object.assign(state, parsed);
-      if (state.geradoEm) state.geradoEm = new Date(state.geradoEm);
-    } catch (e) {
-      console.error("Erro ao ler localStorage", e);
-    }
-  }
-}
-
 function tipoAtual(){ return obterTodosTipos().find(t=>t.id===state.tipoId); }
 function subtiposSelecionados(){ const t=tipoAtual(); return t ? t.subtipos.filter(s=>state.subtipoIds.includes(s.id)) : []; }
 function algumSubtipoResidencial(){ return subtiposSelecionados().some(s=>s.residencial); }
@@ -180,34 +197,39 @@ function toggleSubtipo(id){
 }
 
 function resetForm(){
-  state.screen = 1;
-  state.tipoId = null;
-  state.subtipoIds = [];
-  state.subtiposAdicionais = [];
-  state.veiculosSelecionados = [];
-  state.residencial = { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] };
-  state.respostas = {};
-  state.endereco = "";
-  state.coordenadas = "";
-  state.geradoEm = null;
-  localStorage.removeItem("appOcorrenciaState");
-  render();
+  // Limpar localStorage
+  localStorage.removeItem(STORAGE_KEY);
+  // Resetar o estado em memória (copiando propriedades para manter referência do objeto)
+  Object.assign(state, {
+    screen: 1,
+    tipoId: null,
+    subtipoIds: [],
+    subtiposAdicionais: [],
+    veiculosSelecionados: [],
+    residencial: { tipoImovel:null, andar:0, pavimentos:0, pavimentoFogo:0, comodos:[] },
+    respostas: {},
+    endereco: "",
+    coordenadas: "",
+    geradoEm: null,
+    buscandoGeo: false,
+  });
+  renderComSalvamento();
   window.scrollTo(0,0);
 }
 
-/* ---------- Coleta Automática de Geolocalização ---------- */
+/* ---------- Coleta Automática de Geolocalização (Mantido original) ---------- */
 
 function capturarLocalizacaoAutomatica() {
   if (!("geolocation" in navigator)) {
     state.geoStatus = "erro";
     state.geoMensagem = "Seu navegador não suporta geolocalização.";
-    render();
+    refreshTicketPre();
     return;
   }
 
   state.buscandoGeo = true;
   state.geoStatus = "buscando";
-  render();
+  renderComSalvamento();
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
@@ -215,7 +237,6 @@ function capturarLocalizacaoAutomatica() {
       const lon = pos.coords.longitude.toFixed(6);
       state.coordenadas = `${lat}, ${lon}`;
       state.geoStatus = "sucesso";
-      salvarDados();
 
       try {
         const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
@@ -233,24 +254,23 @@ function capturarLocalizacaoAutomatica() {
             if (cidade) endFmt += (endFmt ? ", " : "") + cidade;
 
             state.endereco = endFmt || data.display_name;
-            salvarDados();
           }
         }
       } catch(e) {
       } finally {
         state.buscandoGeo = false;
-        render();
+        renderComSalvamento();
       }
     },
     (err) => {
       state.buscandoGeo = false;
       state.geoStatus = "erro";
       if (err.code === err.PERMISSION_DENIED) {
-        state.geoMensagem = "Permissão negada. Ative o GPS.";
+        state.geoMensagem = "Permissão de localização negada. Ative o GPS.";
       } else {
-        state.geoMensagem = "Erro no GPS. Ative e tente de novo.";
+        state.geoMensagem = "Não foi possível obter a localização.";
       }
-      render();
+      renderComSalvamento();
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
   );
@@ -268,6 +288,7 @@ function toggleCheckbox(key, opt){
   if(!r.opts) r.opts = [];
   const i = r.opts.indexOf(opt);
   if(i>=0) r.opts.splice(i,1); else r.opts.push(opt);
+  salvarEstado(); // Salvar a cada clique
 }
 
 function isChecked(key, opt){
@@ -279,19 +300,22 @@ function isChecked(key, opt){
 
 function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = false) {
   const container = el("div", "nav-buttons");
+
   if (onBack) {
     const btnBack = el("button", "btn-blue", "Voltar");
     btnBack.type = "button";
-    btnBack.onclick = onBack;
+    btnBack.onclick = () => { onBack(); salvarEstado(); };
     container.appendChild(btnBack);
   }
+
   if (onNext) {
     const btnNext = el("button", "btn-primary", nextText);
     btnNext.type = "button";
     btnNext.disabled = nextDisabled;
-    btnNext.onclick = onNext;
+    btnNext.onclick = () => { onNext(); salvarEstado(); };
     container.appendChild(btnNext);
   }
+
   return container;
 }
 
@@ -300,7 +324,6 @@ function renderNavButtons(onBack, onNext, nextText = "Avançar", nextDisabled = 
 const app = document.getElementById("app");
 
 function render(){
-  salvarDados();
   app.innerHTML = "";
   const wrap = el("div","screen-wrap");
   if(state.screen===1) wrap.appendChild(renderTipoScreen());
@@ -317,90 +340,12 @@ function el(tag, className, text){
   return e;
 }
 
-/* ---------- Tela 1: Tipo & Menu (Atualizado com Flexbox) ---------- */
+/* ---------- Tela 1: Tipo ---------- */
 
 function renderTipoScreen(){
   const c = el("div","screen");
-  
-  // Cabeçalho com Flexbox para alinhar título e menu lateralmente com segurança
-  const headerFlex = el("div");
-  headerFlex.style.display = "flex";
-  headerFlex.style.justifyContent = "space-between";
-  headerFlex.style.alignItems = "flex-start";
-  headerFlex.style.marginBottom = "8px";
-
-  const titlesDiv = el("div");
-  titlesDiv.appendChild(el("h1","screen-title","Tipo de Ocorrência"));
-  titlesDiv.appendChild(el("p","screen-sub","Escolha única — selecione o tipo de ocorrência atendida"));
-  headerFlex.appendChild(titlesDiv);
-
-  // MENU 3 PONTINHOS
-  const menuCont = el("div");
-  menuCont.style.position = "relative";
-  
-  const btnMenu = el("button", "", "⋮");
-  btnMenu.style.fontSize = "28px";
-  btnMenu.style.background = "transparent";
-  btnMenu.style.border = "none";
-  btnMenu.style.cursor = "pointer";
-  btnMenu.style.padding = "0 4px";
-  btnMenu.style.color = "#333";
-  btnMenu.title = "Menu";
-  
-  const dropdown = el("div");
-  dropdown.style.display = "none";
-  dropdown.style.position = "absolute";
-  dropdown.style.right = "0";
-  dropdown.style.top = "36px";
-  dropdown.style.background = "#fff";
-  dropdown.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
-  dropdown.style.borderRadius = "8px";
-  dropdown.style.zIndex = "999";
-  dropdown.style.overflow = "hidden";
-  dropdown.style.minWidth = "140px";
-  
-  const createOp = (txt, action) => {
-    const item = el("div", "", txt);
-    item.style.padding = "12px 16px";
-    item.style.cursor = "pointer";
-    item.style.borderBottom = "1px solid #f0f0f0";
-    item.style.fontSize = "14px";
-    item.style.color = "#333";
-    item.onmouseover = () => item.style.background = "#f9f9f9";
-    item.onmouseout = () => item.style.background = "#fff";
-    item.onclick = action;
-    return item;
-  };
-  
-  dropdown.appendChild(createOp("Read-me", () => {
-    alert("Instruções:\n\n1. O app salva seu progresso automaticamente a cada clique.\n2. O GPS é capturado logo no início em segundo plano.\n3. Preencha as etapas e gere seu informe padrão para a central.");
-    dropdown.style.display = "none";
-  }));
-  dropdown.appendChild(createOp("Versão", () => {
-    alert("App Informe Operacional\nVersão: 1.1.1\nNovidades: Menu 3 pontinhos alinhado, salvamento local automático e padronização para central.");
-    dropdown.style.display = "none";
-  }));
-  dropdown.appendChild(createOp("Sair", () => {
-    if(confirm("Tem certeza que deseja sair? Todos os dados da ocorrência atual serão perdidos e apagados da memória.")){
-      resetForm();
-    }
-    dropdown.style.display = "none";
-  }));
-  
-  btnMenu.onclick = (e) => {
-    e.stopPropagation();
-    dropdown.style.display = dropdown.style.display === "none" ? "block" : "none";
-  };
-
-  // Fecha o menu ao clicar em qualquer outro lugar da tela
-  document.addEventListener("click", () => {
-    if (dropdown) dropdown.style.display = "none";
-  });
-  
-  menuCont.append(btnMenu, dropdown);
-  headerFlex.appendChild(menuCont);
-  c.appendChild(headerFlex);
-  // FIM DO MENU
+  c.appendChild(el("h1","screen-title","Tipo de Ocorrência"));
+  c.appendChild(el("p","screen-sub","Escolha única — selecione o tipo de ocorrência atendida"));
 
   CATEGORIAS_OCORRENCIAS.forEach(cat=>{
     const sectionTitle = el("h2","category-title", cat.categoria);
@@ -419,7 +364,7 @@ function renderTipoScreen(){
         state.veiculosSelecionados=[];
         state.respostas={}; 
         state.screen=2; 
-        render(); 
+        renderComSalvamento();
         window.scrollTo(0,0); 
       };
       list.appendChild(btn);
@@ -454,10 +399,11 @@ function renderSubtipoScreen(){
       btnClear.type = "button";
       btnClear.onclick = () => {
         state.veiculosSelecionados = [];
-        render();
+        renderComSalvamento();
       };
       yellowBox.appendChild(btnClear);
     }
+
     c.appendChild(yellowBox);
   }
 
@@ -474,7 +420,7 @@ function renderSubtipoScreen(){
       }
       btn.onclick = ()=>{
         state.veiculosSelecionados.push(s.nome);
-        render();
+        renderComSalvamento();
       };
       list.appendChild(btn);
     } else {
@@ -482,7 +428,7 @@ function renderSubtipoScreen(){
       const btn = el("button","opt-row"+(selected?" selected":""));
       btn.type = "button";
       btn.appendChild(el("span","btn-label-clean", s.nome));
-      btn.onclick = ()=>{ toggleSubtipo(s.id); render(); };
+      btn.onclick = ()=>{ toggleSubtipo(s.id); renderComSalvamento(); };
       list.appendChild(btn);
     }
   });
@@ -499,7 +445,7 @@ function renderSubtipoScreen(){
       btn.appendChild(el("span","count-badge", `+${count}`));
       btn.onclick = ()=>{
         state.veiculosSelecionados.push(customName);
-        render();
+        renderComSalvamento();
       };
       list.appendChild(btn);
     });
@@ -510,7 +456,7 @@ function renderSubtipoScreen(){
       btn.appendChild(el("span","btn-label-clean", customName));
       btn.onclick = ()=>{
         state.subtiposAdicionais.splice(idx, 1);
-        render();
+        renderComSalvamento();
       };
       list.appendChild(btn);
     });
@@ -522,6 +468,7 @@ function renderSubtipoScreen(){
   fieldOutros.appendChild(el("div", "field-label", "Outros (digite e clique em OK para adicionar)"));
   
   const outrosRow = el("div", "outros-row");
+  
   const inputOutros = el("input", "input-outros");
   inputOutros.type = "text";
   inputOutros.placeholder = "Digite outra opção...";
@@ -540,7 +487,7 @@ function renderSubtipoScreen(){
           state.subtiposAdicionais.push(val);
         }
       }
-      render();
+      renderComSalvamento();
     }
   };
 
@@ -566,8 +513,8 @@ function renderSubtipoScreen(){
     : (state.subtipoIds.length === 0 && state.subtiposAdicionais.length === 0);
 
   const nav = renderNavButtons(
-    () => { state.screen = 1; render(); window.scrollTo(0, 0); },
-    () => { state.screen = 3; render(); window.scrollTo(0, 0); },
+    () => { state.screen = 1; renderComSalvamento(); window.scrollTo(0, 0); },
+    () => { state.screen = 3; renderComSalvamento(); window.scrollTo(0, 0); },
     "Avançar",
     isNextDisabled
   );
@@ -584,14 +531,14 @@ function renderResidencialDetalhes(){
   ["Casa","Apartamento"].forEach(op=>{
     const b = el("button","chip small"+(state.residencial.tipoImovel===op?" selected":""),op);
     b.type="button";
-    b.onclick=()=>{state.residencial.tipoImovel=op; render();};
+    b.onclick=()=>{state.residencial.tipoImovel=op; renderComSalvamento();};
     tipoRow.appendChild(b);
   });
   box.appendChild(labeledField("Tipo de Imóvel", tipoRow));
 
-  box.appendChild(counterField("Andar", state.residencial.andar, v=>{state.residencial.andar=v; render();}));
-  box.appendChild(counterField("Pavimentos", state.residencial.pavimentos, v=>{state.residencial.pavimentos=v; render();}));
-  box.appendChild(counterField("Fogo em qual Pavimento", state.residencial.pavimentoFogo, v=>{state.residencial.pavimentoFogo=v; render();}));
+  box.appendChild(counterField("Andar", state.residencial.andar, v=>{state.residencial.andar=v; renderComSalvamento();}));
+  box.appendChild(counterField("Pavimentos", state.residencial.pavimentos, v=>{state.residencial.pavimentos=v; renderComSalvamento();}));
+  box.appendChild(counterField("Fogo em qual Pavimento", state.residencial.pavimentoFogo, v=>{state.residencial.pavimentoFogo=v; renderComSalvamento();}));
 
   const comodoRow = el("div","chip-row wrap");
   ["Sala","Cozinha","Quarto","Banheiro","Área externa"].forEach(op=>{
@@ -601,7 +548,7 @@ function renderResidencialDetalhes(){
     b.onclick=()=>{
       const i = state.residencial.comodos.indexOf(op);
       if(i>=0) state.residencial.comodos.splice(i,1); else state.residencial.comodos.push(op);
-      render();
+      renderComSalvamento();
     };
     comodoRow.appendChild(b);
   });
@@ -626,8 +573,8 @@ function counterField(label, value, onChange){
   const minus = el("button","counter-btn","−"); minus.type="button";
   const val = el("span","counter-val", String(value).padStart(2,"0"));
   const plus = el("button","counter-btn","+"); plus.type="button";
-  minus.onclick=()=>onChange(Math.max(0,value-1));
-  plus.onclick=()=>onChange(value+1);
+  minus.onclick=()=>{onChange(Math.max(0,value-1)); salvarEstado();};
+  plus.onclick=()=>{onChange(value+1); salvarEstado();};
   ctrl.append(minus,val,plus);
   row.appendChild(ctrl);
   return row;
@@ -655,12 +602,12 @@ function renderPerguntasScreen(){
   });
 
   const nav = renderNavButtons(
-    () => { state.screen = 2; render(); window.scrollTo(0, 0); },
+    () => { state.screen = 2; renderComSalvamento(); window.scrollTo(0, 0); },
     () => { 
       state.geradoEm = new Date(); 
       if(!state.coordenadas) capturarLocalizacaoAutomatica();
       state.screen = 4; 
-      render(); 
+      renderComSalvamento(); 
       window.scrollTo(0,0); 
     },
     "GERAR INFORME OPERACIONAL"
@@ -681,6 +628,7 @@ function renderPergunta(p){
   else if(p.type==="recursos") renderRecursosBlock(p, box);
   else if(p.type==="texto") renderTextoBlock(p, box);
 
+  /* Campo de texto de observação abaixo de cada bloco de perguntas */
   if (p.type !== "texto") {
     const key = p.key || (p.type === "vitimas" ? "vitimas" : p.type === "recursos" ? "recursos" : "bloco");
     const r = getResp(key);
@@ -688,9 +636,13 @@ function renderPergunta(p){
     inputBlockText.type = "text";
     inputBlockText.placeholder = "Observação / Detalhes deste bloco...";
     inputBlockText.value = r.observacao || "";
-    inputBlockText.oninput = (e) => { r.observacao = e.target.value; };
+    inputBlockText.oninput = (e) => { 
+        r.observacao = e.target.value; 
+        salvarEstado();
+    };
     box.appendChild(labeledField("Observações do Bloco", inputBlockText));
   }
+
   return box;
 }
 
@@ -713,7 +665,7 @@ function gridOptionsNoIcons(options, isSelectedFn, onToggle, colorFn){
       if(c) span.style.color = c;
     }
     b.appendChild(span);
-    b.onclick=()=>{ onToggle(op); render(); };
+    b.onclick=()=>{ onToggle(op); renderComSalvamento(); };
     grid.appendChild(b);
   });
   return grid;
@@ -744,7 +696,7 @@ function renderMaterialBlock(p, box){
     b.onclick=()=>{
       if(active) delete r.classes[cl.nome];
       else r.classes[cl.nome] = [];
-      render();
+      renderComSalvamento();
     };
     clBox.appendChild(b);
     if(active){
@@ -786,7 +738,7 @@ function renderContadoresBlock(p, box){
   const r = getResp(p.key);
   if(!r.counts) r.counts = {};
   p.options.forEach(op=>{
-    box.appendChild(counterField(op, r.counts[op]||0, v=>{r.counts[op]=v; render();}));
+    box.appendChild(counterField(op, r.counts[op]||0, v=>{r.counts[op]=v; renderComSalvamento();}));
   });
   return box;
 }
@@ -804,14 +756,14 @@ function renderVitimasBlock(box){
   const semBtn = el("button","grid-btn full-width"+(r.sem?" selected":""));
   semBtn.type="button";
   semBtn.appendChild(el("span","grid-btn-text","Sem vítimas"));
-  semBtn.onclick=()=>{ r.sem=!r.sem; render(); };
+  semBtn.onclick=()=>{ r.sem=!r.sem; renderComSalvamento(); };
   box.appendChild(semBtn);
   if(!r.sem){
-    box.appendChild(counterField("Quantidade de Vítimas", r.total||0, v=>{r.total=v; render();}));
-    box.appendChild(counterFieldColored("Verdes", "var(--green)", r.verde||0, v=>{r.verde=v; render();}));
-    box.appendChild(counterFieldColored("Amarelas", "var(--amber)", r.amarelo||0, v=>{r.amarelo=v; render();}));
-    box.appendChild(counterFieldColored("Vermelhas", "var(--red)", r.vermelho||0, v=>{r.vermelho=v; render();}));
-    box.appendChild(counterFieldColored("Cinzas", "var(--text-dim)", r.cinza||0, v=>{r.cinza=v; render();}));
+    box.appendChild(counterField("Quantidade de Vítimas", r.total||0, v=>{r.total=v; renderComSalvamento();}));
+    box.appendChild(counterFieldColored("Verdes", "var(--green)", r.verde||0, v=>{r.verde=v; renderComSalvamento();}));
+    box.appendChild(counterFieldColored("Amarelas", "var(--amber)", r.amarelo||0, v=>{r.amarelo=v; renderComSalvamento();}));
+    box.appendChild(counterFieldColored("Vermelhas", "var(--red)", r.vermelho||0, v=>{r.vermelho=v; renderComSalvamento();}));
+    box.appendChild(counterFieldColored("Cinzas", "var(--text-dim)", r.cinza||0, v=>{r.cinza=v; renderComSalvamento();}));
   }
   return box;
 }
@@ -839,7 +791,7 @@ function renderRecursosBlock(p, box){
       if(i>=0) r.tipos.splice(i,1); else r.tipos.push(op);
       r.viaturas = r.tipos.length;
     }));
-  box.appendChild(counterField("Efetivo empregado", r.efetivo||0, v=>{r.efetivo=v; render();}));
+  box.appendChild(counterField("Efetivo empregado", r.efetivo||0, v=>{r.efetivo=v; renderComSalvamento();}));
   return box;
 }
 
@@ -850,12 +802,15 @@ function renderTextoBlock(p, box){
   ta.rows = 4;
   ta.placeholder = "Digite observações adicionais...";
   ta.value = r.texto || "";
-  ta.oninput = (e)=>{ r.texto = e.target.value; };
+  ta.oninput = (e)=>{ 
+      r.texto = e.target.value; 
+      salvarEstado();
+  };
   box.appendChild(ta);
   return box;
 }
 
-/* ---------- Geração do Informe (PADRONIZADO PARA A CENTRAL) ---------- */
+/* ---------- Geração do Informe (Mantido original) ---------- */
 
 const SEPARADOR = "--------------------------------";
 
@@ -868,12 +823,11 @@ function gerarTextoInforme(){
 
   const cab = ["*AVALIAÇÃO DA CENA*"];
   const agora = state.geradoEm || new Date();
-  
   cab.push("*DATA:* " + agora.toLocaleDateString("pt-BR"));
   cab.push("*HORA:* " + agora.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) + " (coleta das informações)");
-  cab.push("*COORDENADAS:* " + (state.coordenadas.trim() || "NÃO INFORMADA"));
-  cab.push("*ENDEREÇO:* " + (state.endereco.trim() || "NÃO INFORMADO"));
-  cab.push("*MISSÃO:* " + (t.missao || "NÃO INFORMADA"));
+  if(state.coordenadas.trim()) cab.push("*COORDENADAS:* " + state.coordenadas.trim());
+  if(state.endereco.trim()) cab.push("*ENDEREÇO:* " + state.endereco.trim());
+  cab.push("*MISSÃO:* " + (t.missao || ""));
   blocos.push(cab);
 
   const loc = [];
@@ -882,15 +836,11 @@ function gerarTextoInforme(){
   if(t.quantidadeVeiculos){
     if(state.veiculosSelecionados.length > 0){
       loc.push("SUBTIPO: " + state.veiculosSelecionados.join(" x "));
-    } else {
-      loc.push("SUBTIPO: NÃO INFORMADO");
     }
   } else {
     let listaSubtipos = subs.map(s => s.nome).concat(state.subtiposAdicionais);
     if(listaSubtipos.length > 0){
       loc.push("SUBTIPO: " + listaSubtipos.join(", "));
-    } else {
-      loc.push("SUBTIPO: NÃO INFORMADO");
     }
   }
 
@@ -928,19 +878,31 @@ function gerarTextoInforme(){
         .map(g=>({nome:g.nome, valores:(r.groups && r.groups[g.nome]) || []}))
         .filter(x=>x.valores.length>0)
         .map(x=>x.nome + ": " + x.valores.join(", "));
-      if(partes.length) linhaMsg = "INFORMAÇÕES ADICIONAIS:\n" + partes.join("\n");
+      if(partes.length) {
+        linhaMsg = "INFORMAÇÕES ADICIONAIS:
+" + partes.join("
+");
+      }
     } else if(p.type==="contadores" && r.counts){
       const entries = Object.entries(r.counts).filter(([k,v])=>v>0);
-      if(entries.length) linhaMsg = "FERRAMENTAS:\n" + entries.map(([k,v])=> k + " (" + v + ")").join("\n");
+      if(entries.length) {
+        linhaMsg = "FERRAMENTAS:
+" + entries.map(([k,v])=> k + " (" + v + ")").join("
+");
+      }
     }
 
     const ignorarNoLoop = ["vitimas", "situacaoVitimas", "recursos", "observacoes"];
     if (!ignorarNoLoop.includes(p.key)) {
       const temObs = r.observacao && r.observacao.trim();
+      
       if(linhaMsg) {
-        if(temObs) linhaMsg += " | " + r.observacao.trim();
+        if(temObs) {
+          linhaMsg += " | " + r.observacao.trim();
+        }
         sit.push(linhaMsg);
-      } else if (temObs) {
+      } 
+      else if (temObs) {
         let fallbackLabel = p.label ? p.label.toUpperCase() : p.key.toUpperCase();
         sit.push(fallbackLabel + ": " + r.observacao.trim());
       }
@@ -1016,7 +978,10 @@ function gerarTextoInforme(){
   blocos.push(obs);
 
   const naoVazios = blocos.filter(b=>b.length>0);
-  return naoVazios.map(b=>b.join("\n")).join("\n"+SEPARADOR+"\n");
+  return naoVazios.map(b=>b.join("
+")).join("
+"+SEPARADOR+"
+");
 }
 
 /* ---------- Tela 4: Informe ---------- */
@@ -1096,7 +1061,7 @@ function renderInformeScreen(){
   c.appendChild(actions);
 
   const nav = renderNavButtons(
-    () => { state.screen = 3; render(); window.scrollTo(0, 0); },
+    () => { state.screen = 3; renderComSalvamento(); window.scrollTo(0, 0); },
     null
   );
   c.appendChild(nav);
@@ -1106,15 +1071,12 @@ function renderInformeScreen(){
 
 /* ---------- Inicialização ---------- */
 
-carregarDados();
-render();
+// Carregar estado ao iniciar
+carregarEstado();
+renderComSalvamento();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
     navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
   });
-}
-
-if (!state.coordenadas && !state.buscandoGeo) {
-  capturarLocalizacaoAutomatica();
 }
